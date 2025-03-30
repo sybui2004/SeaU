@@ -1,0 +1,45 @@
+@layer utilities {
+  .gradient-border-input {
+    background: #6e7787;
+    padding: 2px;
+    border-radius: 0.6rem;
+  }
+
+  .gradient-border-input-focus {
+    background: linear-gradient(
+      to bottom,
+      rgb(28, 167, 236),
+      rgb(74, 222, 222)
+    );
+    padding: 2px;
+    border-radius: 0.6rem;
+  }
+}
+
+input:-webkit-autofill {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: linear-gradient(
+    to bottom,
+    rgb(28, 167, 236),
+    rgb(74, 222, 222)
+  ) !important;
+  -webkit-text-fill-color: #939292 !important;
+  box-shadow: 0 0 0px 1000px white inset !important;
+  caret-color: #939292 !important;
+  animation: autofill-fix 0s forwards;
+  transition: background-color 9999s ease-in-out, color 9999s ease-in-out;
+}
+
+@keyframes autofill-fix {
+  from {
+    background: linear-gradient(
+      to bottom,
+      rgb(28, 167, 236),
+      rgb(74, 222, 222)
+    );
+  }
+  to {
+    background: white;
+  }
+}
