@@ -1,12 +1,15 @@
 import Sidebar from "@/components/layout/Sidebar";
 import React, { useState, useRef, useEffect } from "react";
-
-import hideLogin from "@assets/images/hide-login.png";
-import showLogin from "@assets/images/show-login.png";
-import ava from "@assets/images/ava.png";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import iconTick from "@assets/images/icon-tick.png";
+import { useDispatch, useSelector } from "react-redux";
+import { useParams } from "react-router-dom";
+import { getUserProfile, updateUser } from "@/actions/UserAction";
+import store from "@/store/ReduxStore";
+
+// Redux store dispatch type
+type AppDispatch = typeof store.dispatch;
 
 const languageOptions = [
   { code: "en", flag: "🇺🇸", name: "English" },
@@ -24,34 +27,41 @@ const languageOptions = [
   { code: "vi", flag: "🇻🇳", name: "Vietnamese" },
 ];
 
-const ProfileEdit: React.FC = () => {
-  const [firstName, setFirstName] = useState("Bùi Thái");
-  const [lastName, setLastName] = useState("Sỹ");
+const ProfileEdit = () => {
+  const [fullname, setfullname] = useState("Bùi Thái Sỹ");
   const [email, setEmail] = useState("symerline2004@gmail.com");
   const [phone, setPhone] = useState("0354823156");
   const [address, setAddress] = useState("Nghệ An");
   const [birthday, setBirthday] = useState<Date | null>(new Date("2004-09-20"));
   const [language, setLanguage] = useState(languageOptions[0]);
-  const [password, setPassword] = useState("********");
+  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isHovered, setIsHovered] = useState<Record<string, boolean>>({
-    firstName: false,
-    lastName: false,
+    fullname: false,
     email: false,
     phone: false,
     address: false,
     birthday: false,
     language: false,
     password: false,
+    newpassword: false,
+    confirmpassword: false,
     save: false,
   });
-  const [showPassword, setShowPassword] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [profileImage, setProfileImage] = useState(ava);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState({
+    title: "Success!",
+    message: "Profile has been saved successfully.",
+  });
+  const [notificationType, setNotificationType] = useState<"success" | "error">(
+    "success"
+  );
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -69,22 +79,55 @@ const ProfileEdit: React.FC = () => {
     };
   }, [languageDropdownRef]);
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   const handleLanguageSelect = (lang: (typeof languageOptions)[0]) => {
     setLanguage(lang);
     setShowLanguageDropdown(false);
   };
 
-  const handleSave = () => {
-    console.log("Profile saved");
-    setShowNotification(true);
+  const handleSave = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("fullname", fullname);
+      formData.append("email", email);
+      formData.append("phone", phone);
+      formData.append("address", address);
+      formData.append("dob", birthday ? birthday.toISOString() : "");
+      formData.append("language", language.name);
 
-    setTimeout(() => {
-      setShowNotification(false);
-    }, 3000);
+      if (profileImage && profileImage !== user.profilePicture) {
+        formData.append("profilePicture", profileImage);
+      }
+
+      const authData = localStorage.getItem("profile");
+      const parsedAuthData = authData ? JSON.parse(authData) : null;
+      const token = parsedAuthData?.token;
+
+      // Đảm bảo currentUserId được gửi đúng cách
+      if (user && user._id) {
+        formData.append("currentUserId", user._id);
+        console.log("Sending currentUserId:", user._id);
+      }
+
+      if (token) {
+        try {
+          await dispatch(updateUser(user._id, formData) as any);
+          console.log("Profile saved successfully");
+          setShowNotification(true);
+
+          setTimeout(() => {
+            setShowNotification(false);
+          }, 3000);
+        } catch (err: any) {
+          console.error("Error in dispatch:", err);
+          alert(err.message || "Có lỗi xảy ra khi cập nhật thông tin");
+        }
+      } else {
+        console.error("Authentication token not found");
+        alert("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
+      }
+    } catch (error: any) {
+      console.error("Error saving profile:", error);
+    }
   };
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,6 +150,48 @@ const ProfileEdit: React.FC = () => {
     fileInputRef.current?.click();
   };
 
+  const dispatch = useDispatch<AppDispatch>();
+  const params = useParams();
+  const profileUserId = params.id;
+  const { user } = useSelector((state: any) => state.authReducer.authData);
+  const { userProfiles, loading } = useSelector(
+    (state: any) => state.userReducer
+  );
+
+  // Get the profile user from Redux store
+  const profileUser = profileUserId ? userProfiles[profileUserId] : null;
+
+  useEffect(() => {
+    // Fetch profile user if not available in the store
+    if (profileUserId && !profileUser) {
+      dispatch(getUserProfile(profileUserId) as any);
+    }
+  }, [dispatch, profileUserId, profileUser]);
+
+  // Initialize state variables from user data
+  useEffect(() => {
+    if (user) {
+      setfullname(user.fullname || "");
+      setEmail(user.email || "");
+      setPhone(user.phone || "");
+      setAddress(user.address || "");
+      if (user.dob) {
+        setBirthday(new Date(user.dob));
+      }
+      if (user.language) {
+        const foundLanguage = languageOptions.find(
+          (lang) => lang.name === user.language
+        );
+        if (foundLanguage) {
+          setLanguage(foundLanguage);
+        }
+      }
+      setProfileImage(user.profilePicture || "");
+    }
+  }, [user]);
+
+  const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
+  const [profileImage, setProfileImage] = useState(user.profilePicture);
   return (
     <div className="flex h-screen w-screen max-h-screen overflow-hidden bg-white custom-scrollbar">
       <div className="w-[70px] flex-shrink-0">
@@ -119,7 +204,14 @@ const ProfileEdit: React.FC = () => {
           <div className="flex justify-center mb-6">
             <div className="relative">
               <img
-                src={profileImage}
+                src={
+                  profileImage
+                    ? typeof profileImage === "string" &&
+                      profileImage.startsWith("http")
+                      ? profileImage
+                      : serverPublic + profileImage
+                    : serverPublic + "defaultProfile.png"
+                }
                 alt="Profile"
                 className="w-24 h-24 rounded-full object-cover"
               />
@@ -144,60 +236,31 @@ const ProfileEdit: React.FC = () => {
           </div>
 
           <div className="w-full">
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  First Name
-                </label>
-                <div
-                  className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
-                    isHovered.firstName
-                      ? "border-[#1CA7EC] shadow-md"
-                      : "border-transparent"
-                  } text-zinc-900 max-md:px-5 max-md:max-w-full overflow-hidden`}
-                  onMouseEnter={() =>
-                    setIsHovered((prev) => ({ ...prev, firstName: true }))
-                  }
-                  onMouseLeave={() =>
-                    setIsHovered((prev) => ({ ...prev, firstName: false }))
-                  }
-                >
-                  <input
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Enter your first name"
-                    title="First Name"
-                    className="w-full bg-transparent outline-none"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Last Name
-                </label>
-                <div
-                  className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
-                    isHovered.lastName
-                      ? "border-[#1CA7EC] shadow-md"
-                      : "border-transparent"
-                  } text-zinc-900 max-md:px-5 max-md:max-w-full overflow-hidden`}
-                  onMouseEnter={() =>
-                    setIsHovered((prev) => ({ ...prev, lastName: true }))
-                  }
-                  onMouseLeave={() =>
-                    setIsHovered((prev) => ({ ...prev, lastName: false }))
-                  }
-                >
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Enter your last name"
-                    title="Last Name"
-                    className="w-full bg-transparent outline-none"
-                  />
-                </div>
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1">
+                Full Name
+              </label>
+              <div
+                className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
+                  isHovered.fullname
+                    ? "border-[#1CA7EC] shadow-md"
+                    : "border-transparent"
+                } text-zinc-900 max-md:px-5 max-md:max-w-full overflow-hidden`}
+                onMouseEnter={() =>
+                  setIsHovered((prev) => ({ ...prev, fullname: true }))
+                }
+                onMouseLeave={() =>
+                  setIsHovered((prev) => ({ ...prev, fullname: false }))
+                }
+              >
+                <input
+                  type="text"
+                  value={fullname}
+                  onChange={(e) => setfullname(e.target.value)}
+                  placeholder="Enter your first name"
+                  title="First Name"
+                  className="w-full bg-transparent outline-none"
+                />
               </div>
             </div>
 
@@ -341,7 +404,6 @@ const ProfileEdit: React.FC = () => {
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
                 >
                   <div className="flex items-center w-full">
-                    <span className="mr-2 text-lg">{language.flag}</span>
                     <span>{language.name}</span>
                   </div>
                   <div className="absolute right-4">
@@ -375,7 +437,6 @@ const ProfileEdit: React.FC = () => {
                           handleLanguageSelect(lang);
                         }}
                       >
-                        <span className="mr-2 text-lg">{lang.flag}</span>
                         <span>{lang.name}</span>
                       </div>
                     ))}
@@ -386,7 +447,7 @@ const ProfileEdit: React.FC = () => {
 
             <div className="mb-6">
               <label className="block text-sm text-gray-600 mb-1">
-                Password
+                Current Password
               </label>
               <div
                 className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
@@ -402,28 +463,70 @@ const ProfileEdit: React.FC = () => {
                 }
               >
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  title="Password"
+                  placeholder="Enter your current password"
+                  title="Current Password"
                   className="w-full bg-transparent outline-none"
                 />
-                <button
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className="w-10 h-10 rounded-md absolute top-2/4 -translate-y-2/4 cursor-pointer right-[15px] flex items-center justify-center"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  <img
-                    src={showPassword ? hideLogin : showLogin}
-                    className="w-5 h-5 max-w-none"
-                    alt={showPassword ? "Hide password" : "Show password"}
-                  />
-                </button>
               </div>
             </div>
 
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1">
+                New Password
+              </label>
+              <div
+                className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
+                  isHovered.newpassword
+                    ? "border-[#1CA7EC] shadow-md"
+                    : "border-transparent"
+                } text-zinc-900 max-md:px-5 max-md:max-w-full overflow-hidden relative`}
+                onMouseEnter={() =>
+                  setIsHovered((prev) => ({ ...prev, newpassword: true }))
+                }
+                onMouseLeave={() =>
+                  setIsHovered((prev) => ({ ...prev, newpassword: false }))
+                }
+              >
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter your new password"
+                  title="New Password"
+                  className="w-full bg-transparent outline-none"
+                />
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1">
+                Confirm Password
+              </label>
+              <div
+                className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
+                  isHovered.confirmpassword
+                    ? "border-[#1CA7EC] shadow-md"
+                    : "border-transparent"
+                } text-zinc-900 max-md:px-5 max-md:max-w-full overflow-hidden relative`}
+                onMouseEnter={() =>
+                  setIsHovered((prev) => ({ ...prev, confirmpassword: true }))
+                }
+                onMouseLeave={() =>
+                  setIsHovered((prev) => ({ ...prev, confirmpassword: false }))
+                }
+              >
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your new password"
+                  title="Confirm Password"
+                  className="w-full bg-transparent outline-none"
+                />
+              </div>
+            </div>
             <div>
               <button
                 onClick={handleSave}
@@ -446,14 +549,24 @@ const ProfileEdit: React.FC = () => {
 
       {/* Notification */}
       {showNotification && (
-        <div className="fixed top-4 right-4 bg-blue-100 border-l-4 border-blue-200 text-blue-500 p-4 rounded shadow-md transition-all duration-500 z-50">
+        <div
+          className={`fixed top-4 right-4 ${
+            notificationType === "success"
+              ? "bg-blue-100 border-blue-200 text-blue-500"
+              : "bg-red-100 border-red-200 text-red-500"
+          } border-l-4 p-4 rounded shadow-md transition-all duration-500 z-50`}
+        >
           <div className="flex items-center">
             <div className="py-1">
-              <img src={iconTick} alt="Success" className="w-8 mr-2" />
+              <img
+                src={iconTick}
+                alt={notificationType === "success" ? "Success" : "Error"}
+                className="w-8 mr-2"
+              />
             </div>
             <div>
-              <p className="font-bold">Success!</p>
-              <p className="text-sm">Profile has been saved successfully.</p>
+              <p className="font-bold">{notificationMessage.title}</p>
+              <p className="text-sm">{notificationMessage.message}</p>
             </div>
           </div>
         </div>

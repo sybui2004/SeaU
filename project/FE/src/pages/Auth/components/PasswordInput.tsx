@@ -8,41 +8,34 @@ import LoginForm from "./LoginForm";
 import RegisterForm from "./RegisterForm";
 type PasswordInputProps = {
   variant?: "login" | "register";
-  onChange?: (password: string) => void;
-  value?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  value: string;
   id?: string;
   label?: string;
+  name?: string;
 };
 
 function PasswordInput({
   variant = "login",
+  value,
   onChange,
-  value: initialValue = "",
   id = "password",
   label = "Password",
+  name = "password",
 }: PasswordInputProps) {
-  const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
-
-  React.useEffect(() => {
-    setPassword(initialValue);
-  }, [initialValue]);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-    onChange?.(e.target.value);
-  };
-
   const inputProps = {
     id,
+    name,
     type: showPassword ? "text" : "password",
     label,
-    value: password,
-    onChange: handlePasswordChange,
+    value,
+    onChange,
     rightElement: (
       <button
         type="button"

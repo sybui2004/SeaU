@@ -5,11 +5,10 @@ import webLogo from "@assets/images/web-logo.png";
 import homeIcon from "@assets/images/icon-home.png";
 import messageIcon from "@assets/images/icon-message.png";
 import botIcon from "@assets/images/icon-bot.png";
-import ava from "@assets/images/ava.png";
 import settingIcon from "@assets/images/icon-setting.png";
 import githubIcon from "@assets/images/icon-github.png";
 import logOutIcon from "@assets/images/icon-logout.png";
-
+import { useSelector } from "react-redux";
 type MenuItem =
   | "home"
   | "message"
@@ -103,7 +102,8 @@ const Sidebar = () => {
 
     return baseClasses;
   };
-
+  const { user } = useSelector((state: any) => state.authReducer.authData);
+  const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
   return (
     <div className="fixed flex flex-col items-center py-4 pl-2 bg-white shadow-lg w-[72px] h-screen border-r border-gray-200 transition-all duration-300 hover:w-[80px] max-md:hidden">
       <img
@@ -137,14 +137,18 @@ const Sidebar = () => {
         </div>
 
         <div
-          className={`mt-auto ${getItemStyles("edit-profile")}`}
+          className={`m-auto w-[48px] ${getItemStyles("edit-profile")}`}
           onMouseEnter={() => setHoveredItem("edit-profile")}
           onMouseLeave={() => setHoveredItem(null)}
-          onClick={() => handleClick("edit-profile")}
+          onClick={() => navigate(`/edit-profile/${user._id}`)}
         >
           <img
-            src={ava}
-            className="object-contain m-auto w-[54px] rounded-2xl aspect-square max-md:mt-10"
+            src={
+              user.profilePicture
+                ? serverPublic + user.profilePicture
+                : serverPublic + "defaultProfile.png"
+            }
+            className="object-contain m-auto w-[36px] rounded-3xl aspect-square max-md:mt-10"
             alt="User avatar"
           />
         </div>

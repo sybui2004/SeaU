@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
-import { IComment } from "../interfaces/comment.interface";
 
-const commentSchema = new mongoose.Schema<IComment>(
+const commentSchema = new mongoose.Schema(
   {
     content: {
       type: String,
@@ -67,6 +66,6 @@ commentSchema.virtual("repliesCount").get(function () {
   return this.replies?.length || 0;
 });
 
-const Comment = mongoose.model<IComment>("Comment", commentSchema);
+const Comment = mongoose.model("Comment", commentSchema);
 
 export default Comment;

@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
-import { IMessageNotification } from "../interfaces/message_notification.interface";
 
-const messageNotificationSchema = new mongoose.Schema<IMessageNotification>(
+const messageNotificationSchema = new mongoose.Schema(
   {
     recipient: {
       type: mongoose.Schema.Types.ObjectId,
@@ -57,23 +56,23 @@ messageNotificationSchema.index({ sender: 1, createdAt: -1 });
 messageNotificationSchema.index({ isDeleted: 1 });
 messageNotificationSchema.index({ createdAt: 1 }, { expires: "30d" });
 
-messageNotificationSchema
-  .virtual("timeElapsed")
-  .get(function (this: IMessageNotification) {
-    return Date.now() - this.createdAt.getTime();
-  });
+// messageNotificationSchema
+//   .virtual("timeElapsed")
+//   .get(function (this: IMessageNotification) {
+//     return Date.now() - this.createdAt.getTime();
+//   });
 
-messageNotificationSchema.pre(
-  "save",
-  function (this: IMessageNotification, next) {
-    if (this.isModified("isRead") && this.isRead && !this.readAt) {
-      this.readAt = new Date();
-    }
-    next();
-  }
-);
+// messageNotificationSchema.pre(
+//   "save",
+//   function (this: IMessageNotification, next) {
+//     if (this.isModified("isRead") && this.isRead && !this.readAt) {
+//       this.readAt = new Date();
+//     }
+//     next();
+//   }
+// );
 
-const MessageNotification = mongoose.model<IMessageNotification>(
+const MessageNotification = mongoose.model(
   "MessageNotification",
   messageNotificationSchema
 );

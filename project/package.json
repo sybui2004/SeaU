@@ -1,6 +1,12 @@
 {
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "mongodb": "^6.15.0",
     "mongoose": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.9",
+    "jsonwebtoken": "^9.0.2"
   }
 }

@@ -1,8 +1,8 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import React, { Suspense } from "react";
+import { useSelector } from "react-redux";
 // import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-
 const loadComponent = (importFunc: any) =>
   React.lazy(() =>
     importFunc().catch((err: any) => {
@@ -18,20 +18,32 @@ const Chatbot = loadComponent(() => import("./pages/Chatbot"));
 const ProfileEdit = loadComponent(() => import("./pages/ProfileEdit"));
 const Admin = loadComponent(() => import("./pages/Admin"));
 function App() {
+  const user = useSelector((state: any) => state.authReducer.authData);
   return (
-    <BrowserRouter>
-      <Suspense fallback={<div>Loading...</div>}>
-        <Routes>
-          <Route path="/" element={<Auth />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/:username/profile" element={<ProfilePage />} />
-          <Route path="/message" element={<Messages />} />
-          <Route path="/bot" element={<Chatbot />} />
-          <Route path="/:username/edit-profile" element={<ProfileEdit />} />
-          <Route path="/admin" element={<Admin />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+    <Suspense fallback={<div>Loading...</div>}>
+      <Routes>
+        <Route
+          path="/"
+          element={user ? <Navigate to="home" /> : <Navigate to="auth" />}
+        />
+        <Route
+          path="/home"
+          element={user ? <Home /> : <Navigate to="../auth" />}
+        />
+        <Route
+          path="/auth"
+          element={user ? <Navigate to="../home" /> : <Auth />}
+        />
+        <Route
+          path="/profile/:id"
+          element={user ? <ProfilePage /> : <Navigate to="../auth" />}
+        ></Route>
+        <Route path="/message" element={<Messages />} />
+        <Route path="/bot" element={<Chatbot />} />
+        <Route path="/edit-profile/:id" element={<ProfileEdit />} />
+        <Route path="/admin" element={<Admin />} />
+      </Routes>
+    </Suspense>
   );
 }
 

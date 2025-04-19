@@ -1,7 +1,6 @@
 import mongoose, { Document } from "mongoose";
-import { ILike } from "../interfaces/like.interface";
 
-const likeSchema = new mongoose.Schema<ILike>(
+const likeSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -39,21 +38,21 @@ likeSchema.index({ user: 1, createdAt: -1 });
 likeSchema.index({ type: 1 });
 likeSchema.index({ isDeleted: 1 });
 
-likeSchema.virtual("reactionAge").get(function (this: ILike) {
-  return Date.now() - this.createdAt.getTime();
-});
+// likeSchema.virtual("reactionAge").get(function (this: ILike) {
+//   return Date.now() - this.createdAt.getTime();
+// });
 
-likeSchema.pre("save", async function (this: ILike, next) {
-  if (this.isNew) {
-    await this.model("Like").deleteOne({
-      user: this.user,
-      post: this.post,
-      _id: { $ne: this._id },
-    });
-  }
-  next();
-});
+// likeSchema.pre("save", async function (this: ILike, next) {
+//   if (this.isNew) {
+//     await this.model("Like").deleteOne({
+//       user: this.user,
+//       post: this.post,
+//       _id: { $ne: this._id },
+//     });
+//   }
+//   next();
+// });
 
-const Like = mongoose.model<ILike>("Like", likeSchema);
+const Like = mongoose.model("Like", likeSchema);
 
 export default Like;

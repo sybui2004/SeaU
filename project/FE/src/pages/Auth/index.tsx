@@ -1,352 +1,244 @@
+// AuthForm.tsx
 "use client";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { useAuthStore } from "@/store/auth";
-import { CreateUserRequest, LoginUserRequest } from "@/interfaces/User";
-
+import { useSelector, useDispatch } from "react-redux";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Login,
-  Register,
   ImageSlider,
-  SuccessNotification,
+  LoginForm,
+  PasswordInput,
+  SocialLoginButtons,
+  RegisterForm,
 } from "./components";
+import { Button } from "@/components/ui/button";
+import webLogo from "@assets/images/web-logo.png";
+import arrowUp from "@assets/images/arrow-drop-up.png";
+import arrowDown from "@assets/images/arrow-drop-down.png";
+import { logIn, signUp } from "@/actions/AuthAction";
 
 function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  // Login form states
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const loading = useSelector((state: any) => state.authReducer.loading);
+  const dispatch = useDispatch();
   const [rememberMe, setRememberMe] = useState(false);
-
-  // Register form states
-  const [fullName, setFullName] = useState("");
-  const [registerEmail, setRegisterEmail] = useState("");
-  const [registerPassword, setRegisterPassword] = useState("");
-  const [newUser, setNewUser] = useState<CreateUserRequest>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    gender: "other",
-    profilePic: "default-avatar.png",
-    socialMedia: {
-      facebook: "",
-      twitter: "",
-      instagram: "",
-      linkedin: "",
-    },
-    bio: "",
-  });
-
-  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-
-  // Form validation errors
-  const [errors, setErrors] = useState({
-    fullName: "",
-    email: "",
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const handleNextImage = () => setCurrentImageIndex((i) => (i + 1) % 3);
+  const [data, setData] = useState({
+    fullname: "",
+    username: "",
     password: "",
   });
-
-  const navigate = useNavigate();
-  const { createUser, loginUser } = useAuthStore();
-
-  const handleNextImage = () => setCurrentImageIndex((prev) => (prev + 1) % 3);
-
-  const handleLogin = async () => {
-    // Reset previous errors
-    setErrors({
-      fullName: "",
-      email: "",
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setData({ ...data, [e.target.name]: e.target.value });
+  };
+  const handleSubmit = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) e.preventDefault();
+    if (isLogin) {
+      dispatch(logIn(data) as any);
+    } else {
+      dispatch(signUp(data) as any);
+    }
+  };
+  const resetForm = () => {
+    setData({
+      fullname: "",
+      username: "",
       password: "",
     });
-
-    // Basic validation for empty fields
-    if (!loginEmail || !loginPassword) {
-      setErrors({
-        ...errors,
-        email: !loginEmail ? "Email is required" : "",
-        password: !loginPassword ? "Password is required" : "",
-      });
-      return;
-    }
-
-    try {
-      const loginCredentials: LoginUserRequest = {
-        email: loginEmail,
-        password: loginPassword,
-      };
-
-      const response = await loginUser(loginCredentials);
-
-      if (response.success) {
-        setSuccessMessage(response.message);
-        setShowSuccessNotification(true);
-
-        if (loginEmail.trim().toLowerCase() === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/home");
-        }
-      } else {
-        // Hiển thị lỗi từ server
-        if (response.message.toLowerCase().includes("password")) {
-          setErrors({
-            ...errors,
-            password: response.message,
-          });
-        } else if (response.message.toLowerCase().includes("user not found")) {
-          setErrors({
-            ...errors,
-            email: response.message,
-          });
-        } else {
-          setErrors({
-            ...errors,
-            password: response.message || "Login failed. Please try again.",
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      setErrors({
-        ...errors,
-        password: "Connection error. Please try again.",
-      });
-    }
   };
-
-  const handleToggleForm = () => {
-    // Reset errors when switching forms
-    setErrors({
-      fullName: "",
-      email: "",
-      password: "",
-    });
-    // Toggle the form with animation
-    setIsLogin(!isLogin);
-  };
-
-  const validateForm = () => {
-    let isValid = true;
-    const newErrors = {
-      fullName: "",
-      email: "",
-      password: "",
-    };
-
-    // Basic client-side validation for user experience
-    // Chỉ kiểm tra các trường có được nhập hay không
-    if (!fullName.trim()) {
-      newErrors.fullName = "Full name is required";
-      isValid = false;
-    }
-
-    if (!registerEmail.trim()) {
-      newErrors.email = "Email is required";
-      isValid = false;
-    }
-
-    if (!registerPassword) {
-      newErrors.password = "Password is required";
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
-  };
-
-  const handleAddUser = async () => {
-    // Kiểm tra cơ bản
-    if (!validateForm()) {
-      return;
-    }
-
-    const nameParts = fullName.trim().split(/\s+/);
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.slice(1).join(" ") || "";
-
-    const userToRegister: CreateUserRequest = {
-      ...newUser,
-      firstName,
-      lastName,
-      email: registerEmail,
-      password: registerPassword,
-    };
-
-    try {
-      const response = await createUser(userToRegister);
-
-      if (response.success) {
-        setSuccessMessage(response.message);
-        setShowSuccessNotification(true);
-
-        setFullName("");
-        setRegisterEmail("");
-        setRegisterPassword("");
-
-        // Wait before redirecting to login
-        setTimeout(() => {
-          setIsLogin(true);
-        }, 500);
-      } else {
-        // Xử lý các lỗi cụ thể từ server
-        if (response.message.toLowerCase().includes("password")) {
-          setErrors({
-            ...errors,
-            password: response.message,
-          });
-        } else if (response.message.toLowerCase().includes("email")) {
-          setErrors({
-            ...errors,
-            email: response.message,
-          });
-        } else if (response.errors) {
-          // Xử lý lỗi cho từng trường cụ thể
-          const newErrors = { ...errors };
-
-          if (response.errors.firstName || response.errors.lastName) {
-            newErrors.fullName = "Full name is required";
-          }
-
-          if (response.errors.email) {
-            newErrors.email = "Email is required";
-          }
-
-          if (response.errors.password) {
-            newErrors.password = "Password is required";
-          }
-
-          setErrors(newErrors);
-        } else {
-          setErrors({
-            ...errors,
-            password:
-              response.message || "Registration failed. Please try again.",
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Registration error:", error);
-      setErrors({
-        ...errors,
-        password: "Connection error. Please try again.",
-      });
-    }
-  };
-
-  // Update newUser state when inputs change
-  const handleInputChange = (
-    field: keyof CreateUserRequest | "fullName",
-    value: string
-  ) => {
-    // Clear error for this field when user types
-    if (field === "fullName" || field === "email" || field === "password") {
-      setErrors({ ...errors, [field]: "" });
-    }
-
-    if (field === "fullName") {
-      setFullName(value);
-      return;
-    }
-
-    if (field === "email") {
-      setRegisterEmail(value);
-    }
-
-    if (field === "password") {
-      setRegisterPassword(value);
-    }
-
-    setNewUser((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleRegisterPasswordChange = (value: string) => {
-    setRegisterPassword(value);
-    handleInputChange("password", value);
-  };
-
-  const closeSuccessNotification = () => {
-    setShowSuccessNotification(false);
-  };
-
   return (
     <section className="flex justify-center items-center p-10 h-screen w-screen bg-gradient-to-b from-[#1CA7EC] to-[#4ADEDE]">
-      {showSuccessNotification && (
+      {/* {auth.showSuccessNotification && (
         <SuccessNotification
-          message={successMessage}
-          onClose={closeSuccessNotification}
+        // message={successMessage}
+        // onClose={() => setShowSuccessNotification(false)}
         />
-      )}
+      )} */}
 
-      <article className="flex bg-white rounded-3xl max-w-[1200px] shadow-lg flex-wrap md:flex-nowrap h-full w-[85%] overflow-hidden">
+      <form className="flex bg-white rounded-3xl max-w-[1200px] shadow-lg flex-wrap md:flex-nowrap h-full w-[85%] overflow-hidden">
         <AnimatePresence mode="wait">
-          {isLogin ? (
-            <motion.div
-              key="login-container"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="flex flex-wrap md:flex-nowrap w-full h-full"
-            >
-              <div className="relative flex flex-col items-center justify-center w-full md:w-1/2 h-full overflow-hidden">
-                <Login
-                  loginEmail={loginEmail}
-                  setLoginEmail={setLoginEmail}
-                  loginPassword={loginPassword}
-                  setLoginPassword={setLoginPassword}
-                  rememberMe={rememberMe}
-                  setRememberMe={setRememberMe}
-                  handleLogin={handleLogin}
-                  onToggleForm={handleToggleForm}
-                  errors={errors}
-                />
-              </div>
-              <div className="hidden md:block w-full md:w-1/2 h-full">
-                <ImageSlider
-                  currentImageIndex={currentImageIndex}
-                  handleNextImage={handleNextImage}
-                />
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="register-container"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="flex flex-wrap md:flex-nowrap w-full h-full"
-            >
-              <div className="relative flex flex-col items-center justify-center w-full md:w-1/2 h-full overflow-hidden">
-                <Register
-                  fullName={fullName}
-                  registerEmail={registerEmail}
-                  registerPassword={registerPassword}
-                  errors={errors}
-                  handleInputChange={handleInputChange}
-                  handleRegisterPasswordChange={handleRegisterPasswordChange}
-                  handleAddUser={handleAddUser}
-                  onToggleForm={handleToggleForm}
-                />
-              </div>
-              <div className="hidden md:block w-full md:w-1/2 h-full">
-                <ImageSlider
-                  currentImageIndex={currentImageIndex}
-                  handleNextImage={handleNextImage}
-                />
-              </div>
-            </motion.div>
-          )}
+          <motion.div
+            key="container"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-wrap md:flex-nowrap w-full h-full"
+          >
+            <div className="relative flex flex-col items-center justify-center w-full md:w-1/2 h-full overflow-hidden">
+              {isLogin ? (
+                <>
+                  <div className="flex flex-col items-center max-w-md md:p-10 -mt-5 w-full h-full bg-white overflow-hidden">
+                    <img src={webLogo} alt="Logo" className="h-40 mb-5" />
+                    <div className="w-full">
+                      <LoginForm
+                        id="username-login"
+                        name="username"
+                        type="text"
+                        label="Username"
+                        value={data.username}
+                        onChange={handleChange}
+                      />
+                      {/* {errors.username && (
+                        <p className="text-red-500 text-xs ml-2 mb-1 font-medium">
+                          {errors.username}
+                        </p>
+                      )} */}
+                    </div>
+
+                    <div className="w-full">
+                      <PasswordInput
+                        name="password"
+                        value={data.password}
+                        onChange={handleChange}
+                      />
+                      {/* {errors.password && (
+                        <p className="text-red-500 text-xs ml-2 mb-1 font-medium">
+                          {errors.password}
+                        </p>
+                      )} */}
+                    </div>
+
+                    <div className="flex justify-between items-center w-full mb-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={() => setRememberMe(!rememberMe)}
+                          className="peer hidden"
+                        />
+                        <div className="w-5 h-5 rounded border-2 border-gray-500 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 flex items-center justify-center transition-all">
+                          {rememberMe && (
+                            <span className="text-white text-xs font-bold">
+                              ✔
+                            </span>
+                          )}
+                        </div>
+                        <span>Remember me</span>
+                      </label>
+                      <a
+                        href="#"
+                        className="text-sm text-indigo-500 no-underline"
+                      >
+                        Forgot password?
+                      </a>
+                    </div>
+                    <Button
+                      variant="gradientCustom"
+                      className="flex p-3 mb-1 mt-5 text-lg font-bold text-white w-[152px]"
+                      onClick={handleSubmit}
+                    >
+                      Log in
+                    </Button>
+                    <p className="mb-3 text-sm text-zinc-700">Or log in with</p>
+                    <SocialLoginButtons />
+                  </div>
+                  <div className="flex justify-center w-full max-w-[300px]">
+                    <Button
+                      variant="gradientCustom"
+                      className="flex flex-col items-center justify-start w-full h-full p-1 text-[12px] text-white rounded-b-none"
+                      onClick={() => {
+                        setIsLogin((prev) => !prev);
+                        resetForm();
+                      }}
+                    >
+                      <div className="flex flex-col -mt-3 items-center">
+                        <img
+                          src={arrowUp}
+                          className="h-full w-[50px]"
+                          alt="arrowUp"
+                        />
+                        <p className="-mt-1.5">Click here for Register</p>
+                      </div>
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center max-w-md pt-3 w-full h-full bg-white overflow-hidden">
+                  <img src={webLogo} alt="Logo" className="h-32 mb-3" />
+                  <div className="relative flex flex-col items-center justify-center rounded-2xl rounded-b-none w-full h-full p-8 pt-3 bg-gradient-to-b from-[#1CA7EC] to-[#4ADEDE] text-white">
+                    <button
+                      className="flex flex-col items-center justify-center h-10 text-xl text-white"
+                      onClick={() => {
+                        setIsLogin((prev) => !prev);
+                        resetForm();
+                      }}
+                    >
+                      <p className="">Log in</p>
+                      <img
+                        src={arrowDown}
+                        className="h-auto w-[50px] -mt-2"
+                        alt="arrowDown"
+                      />
+                    </button>
+
+                    <div className="w-full">
+                      <RegisterForm
+                        id="fullname"
+                        type="text"
+                        label="Full name"
+                        name="fullname"
+                        value={data.fullname}
+                        onChange={handleChange}
+                        labelClassName="bg-[#21ADEB]"
+                      />
+                      {/* {errors.fullname && (
+                        <ErrorMessage message={errors.fullname} />
+                      )} */}
+                    </div>
+
+                    <div className="w-full">
+                      <RegisterForm
+                        id="username-register"
+                        type="text"
+                        label="Username"
+                        name="username"
+                        value={data.username}
+                        onChange={handleChange}
+                        labelClassName="bg-[#2AB9E8]"
+                      />
+                      {/* {errors.username && (
+                        <ErrorMessage message={errors.username} />
+                      )} */}
+                    </div>
+
+                    <div className="w-full">
+                      <PasswordInput
+                        variant="register"
+                        name="password"
+                        value={data.password}
+                        onChange={handleChange}
+                      />
+                      {/* {errors.password && (
+                        <ErrorMessage message={errors.password} />
+                      )} */}
+                    </div>
+
+                    <div className="flex flex-col items-center w-full mt-5">
+                      <button
+                        className="flex items-center justify-center box-border rounded-full h-9 mb-1 w-[152px] bg-white"
+                        onClick={handleSubmit}
+                      >
+                        <span className="text-transparent bg-clip-text bg-gradient-to-b from-[#1CA7EC] to-[#4ADEDE] text-lg font-bold">
+                          Sign Up
+                        </span>
+                      </button>
+                      <p className="text-sm">Or sign up with</p>
+                      <SocialLoginButtons />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="hidden md:block w-full md:w-1/2 h-full">
+              <ImageSlider
+                currentImageIndex={currentImageIndex}
+                handleNextImage={handleNextImage}
+              />
+            </div>
+          </motion.div>
         </AnimatePresence>
-      </article>
+      </form>
     </section>
   );
 }

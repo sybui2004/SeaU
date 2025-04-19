@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
-import { INotification } from "../interfaces/notification.interface";
 
-const notificationSchema = new mongoose.Schema<INotification>(
+const notificationSchema = new mongoose.Schema(
   {
     recipient: {
       type: mongoose.Schema.Types.ObjectId,
@@ -84,13 +83,10 @@ notificationSchema.index({ reference: 1, referenceType: 1 });
 notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 notificationSchema.index({ priority: 1, createdAt: -1 });
 
-notificationSchema.virtual("timeElapsed").get(function (this: INotification) {
-  return Date.now() - this.createdAt.getTime();
-});
+// notificationSchema.virtual("timeElapsed").get(function (this: INotification) {
+//   return Date.now() - this.createdAt.getTime();
+// });
 
-const Notification = mongoose.model<INotification>(
-  "Notification",
-  notificationSchema
-);
+const Notification = mongoose.model("Notification", notificationSchema);
 
 export default Notification;

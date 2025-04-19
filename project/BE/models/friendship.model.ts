@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
-import { IFriendship } from "../interfaces/friendship.interface";
 
-const friendshipSchema = new mongoose.Schema<IFriendship>(
+const friendshipSchema = new mongoose.Schema(
   {
     requester: {
       type: mongoose.Schema.Types.ObjectId,
@@ -45,29 +44,29 @@ friendshipSchema.index({ createdAt: -1 });
 friendshipSchema.index({ type: 1 });
 friendshipSchema.index({ isDeleted: 1 });
 
-friendshipSchema.virtual("friendshipAge").get(function (this: IFriendship) {
-  return Date.now() - this.createdAt.getTime();
-});
+// friendshipSchema.virtual("friendshipAge").get(function (this: IFriendship) {
+//   return Date.now() - this.createdAt.getTime();
+// });
 
-friendshipSchema.virtual("isMutual").get(async function (this: IFriendship) {
-  if (this.status !== "accepted") return false;
+// friendshipSchema.virtual("isMutual").get(async function (this: IFriendship) {
+//   if (this.status !== "accepted") return false;
 
-  const mutualFriendship = await mongoose.model("Friendship").findOne({
-    requester: this.recipient,
-    recipient: this.requester,
-    status: "accepted",
-  });
+//   const mutualFriendship = await mongoose.model("Friendship").findOne({
+//     requester: this.recipient,
+//     recipient: this.requester,
+//     status: "accepted",
+//   });
 
-  return !!mutualFriendship;
-});
+//   return !!mutualFriendship;
+// });
 
-friendshipSchema.pre("save", function (this: IFriendship, next) {
-  if (this.requester.toString() === this.recipient.toString()) {
-    next(new Error("Cannot create friendship with self"));
-  }
-  next();
-});
+// friendshipSchema.pre("save", function (this: IFriendship, next) {
+//   if (this.requester.toString() === this.recipient.toString()) {
+//     next(new Error("Cannot create friendship with self"));
+//   }
+//   next();
+// });
 
-const Friendship = mongoose.model<IFriendship>("Friendship", friendshipSchema);
+const Friendship = mongoose.model("Friendship", friendshipSchema);
 
 export default Friendship;

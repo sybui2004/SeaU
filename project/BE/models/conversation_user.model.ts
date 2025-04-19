@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
-import { IConversationUser } from "../interfaces/conversation_user.interface";
 
-const conversationUserSchema = new mongoose.Schema<IConversationUser>(
+const conversationUserSchema = new mongoose.Schema(
   {
     conversation: {
       type: mongoose.Schema.Types.ObjectId,
@@ -44,7 +43,7 @@ conversationUserSchema.index({ conversation: 1, user: 1 }, { unique: true });
 conversationUserSchema.index({ user: 1, isDeleted: 1 });
 conversationUserSchema.index({ conversation: 1, role: 1 });
 
-const ConversationUser = mongoose.model<IConversationUser>(
+const ConversationUser = mongoose.model(
   "ConversationUser",
   conversationUserSchema
 );

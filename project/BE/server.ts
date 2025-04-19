@@ -6,8 +6,14 @@ import path from "path";
 import { connectDB } from "./config/db";
 import userRoutes from "./routes/user.route";
 import authRoutes from "./routes/auth.route";
+import postRoutes from "./routes/post.route";
+import uploadRoutes from "./routes/upload.route";
+import conversationRoutes from "./routes/conversation.route";
+
 const app = express();
 
+app.use(express.static("public"));
+app.use("/images", express.static("images"));
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const port = process.env.PORT || 3000;
 app.use(morgan("dev"));
@@ -19,9 +25,12 @@ const mongoURI = process.env.MONGO_URI;
 console.log(mongoURI);
 
 // Mount routes
-app.use(express.json()); // allow json body
-app.use("/api/user", userRoutes);
-app.use("/api/auth", authRoutes);
+app.use(express.json());
+app.use("/user", userRoutes);
+app.use("/auth", authRoutes);
+app.use("/post", postRoutes);
+app.use("/chat", conversationRoutes);
+app.use("/upload", uploadRoutes);
 
 app.listen(port, () => {
   connectDB();

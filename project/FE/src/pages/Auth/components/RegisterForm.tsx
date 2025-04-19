@@ -9,6 +9,7 @@ type RegisterFormProps = {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   rightElement?: React.ReactNode;
   labelClassName?: string;
+  name?: string;
 };
 
 function RegisterForm({
@@ -19,6 +20,7 @@ function RegisterForm({
   onChange,
   rightElement,
   labelClassName,
+  name,
 }: RegisterFormProps) {
   const [focus, setFocus] = React.useState(false);
 
@@ -31,6 +33,7 @@ function RegisterForm({
     <div className="relative w-full mt-5 rounded-md max-w-[365px] bg-transparent border-2 border-white">
       <input
         id={id}
+        name={name}
         type={type}
         placeholder=" "
         value={value}

@@ -2,16 +2,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import NotificationBell from "./NotificationBell";
 import searchIcon from "@assets/images/icon-search.png";
-
+import { Link } from "react-router-dom";
 const Header = () => {
   const [isHovered, setIsHovered] = useState(false);
   return (
     <div className="flex gap-10 pl-4 w-full h-[90px] text-xl whitespace-nowrap bg-white shadow-sm max-md:px-5 max-md:max-w-full sticky top-0 z-1">
-      <div
-        className="flex items-center justify-center font-bold text-zinc-900 text-2xl tracking-tight cursor-pointer"
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      >
-        Home
+      <div className="flex items-center justify-center cursor-pointer">
+        <Link
+          to="../home"
+          className="!font-bold !text-zinc-900 !text-2xl !tracking-tight"
+        >
+          Home
+        </Link>
       </div>
       <div className="flex items-center justify-center w-full max-w-[80%]">
         <div

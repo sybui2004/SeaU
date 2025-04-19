@@ -1,14 +1,13 @@
 import mongoose from "mongoose";
-import { IMessage } from "../interfaces/message.interface";
 
-const messageSchema = new mongoose.Schema<IMessage>(
+const messageSchema = new mongoose.Schema(
   {
-    conversation: {
+    conversationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Conversation",
       required: true,
     },
-    sender: {
+    senderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -40,24 +39,6 @@ const messageSchema = new mongoose.Schema<IMessage>(
       type: Boolean,
       default: false,
     },
-    deletedFor: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    readBy: [
-      {
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        readAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
     replyTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
@@ -78,10 +59,10 @@ messageSchema.index({ "readBy.user": 1 });
 messageSchema.index({ type: 1 });
 messageSchema.index({ isDeleted: 1 });
 
-messageSchema.virtual("isUnread").get(function (this: IMessage) {
-  return this.readBy.length === 0;
-});
+// messageSchema.virtual("isUnread").get(function (this: IMessage) {
+//   return this.readBy.length === 0;
+// });
 
-const Message = mongoose.model<IMessage>("Message", messageSchema);
+const Message = mongoose.model("Message", messageSchema);
 
 export default Message;

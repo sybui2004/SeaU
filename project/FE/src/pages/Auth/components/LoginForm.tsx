@@ -8,6 +8,7 @@ type LoginFormProps = {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   rightElement?: React.ReactNode;
+  name?: string;
 };
 
 function LoginForm({
@@ -17,6 +18,7 @@ function LoginForm({
   value,
   onChange,
   rightElement,
+  name,
 }: LoginFormProps) {
   const [focus, setFocus] = React.useState(false);
 
@@ -35,12 +37,12 @@ function LoginForm({
       <div className="relative">
         <input
           id={id}
+          name={name}
           type={type}
           placeholder=" "
           value={value}
           onChange={onChange}
-          className={`
-            w-full rounded-md p-4 text-base 
+          className={`w-full rounded-md p-4 text-base 
             transition-all duration-300 ease-in-out
             focus:outline-none focus:ring-0
             bg-white [font-family:'Inter-Bold',Helvetica]

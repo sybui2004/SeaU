@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
-import { ISetting } from "../interfaces/setting.interface";
 
-const settingSchema = new mongoose.Schema<ISetting>(
+const settingSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -33,6 +32,6 @@ const settingSchema = new mongoose.Schema<ISetting>(
 
 settingSchema.index({ user: 1 }, { unique: true });
 
-const Setting = mongoose.model<ISetting>("Setting", settingSchema);
+const Setting = mongoose.model("Setting", settingSchema);
 
 export default Setting;

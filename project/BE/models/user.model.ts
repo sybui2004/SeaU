@@ -1,17 +1,12 @@
 import mongoose from "mongoose";
-import { IUser } from "../interfaces/user.interface";
 
-const userSchema = new mongoose.Schema<IUser>(
+const userSchema = new mongoose.Schema(
   {
-    firstName: {
+    fullname: {
       type: String,
       required: true,
     },
-    lastName: {
-      type: String,
-      required: true,
-    },
-    email: {
+    username: {
       type: String,
       required: true,
       unique: true,
@@ -22,13 +17,20 @@ const userSchema = new mongoose.Schema<IUser>(
       type: String,
       required: true,
     },
+    email: {
+      type: String,
+      required: false,
+      lowercase: true,
+      trim: true,
+    },
     gender: {
       type: String,
       enum: ["male", "female", "other"],
-      required: true,
+      required: false,
+      default: null,
     },
     dob: {
-      type: Date,
+      type: Date, // YYYY-MM-DD
       required: false,
       default: null,
     },
@@ -48,51 +50,53 @@ const userSchema = new mongoose.Schema<IUser>(
     },
     profilePic: {
       type: String,
-      required: true,
     },
-    status: {
-      type: String,
-      enum: ["active", "inactive", "banned"],
-      required: true,
-      default: "active",
-    },
+    // status: {
+    //   type: String,
+    //   enum: ["active", "inactive", "banned"],
+    //   required: true,
+    //   default: "active",
+    // },
     socialMedia: {
       facebook: { type: String, default: null },
       twitter: { type: String, default: null },
       instagram: { type: String, default: null },
       linkedin: { type: String, default: null },
     },
-    bio: {
+    occupation: {
       type: String,
       required: false,
       default: null,
+    },
+    language: {
+      type: String,
+      required: false,
+      default: "English",
     },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
     friends: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "User",
+      type: Array,
+      default: [],
+    },
+    pendingFriendRequests: {
+      type: Array,
+      default: [],
+    },
+    blockedUsers: {
+      type: Array,
       default: [],
     },
   },
   {
     timestamps: true,
+    autoIndex: true,
   }
 );
 
-userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ status: 1 });
-userSchema.index({ role: 1 });
-userSchema.index({ createdAt: -1 });
-userSchema.index({ email: 1, status: 1 });
-userSchema.index({ firstName: 1, lastName: 1 });
-
-userSchema.virtual("fullName").get(function (this: IUser) {
-  return `${this.firstName} ${this.lastName}`;
-});
-
-const User = mongoose.model<IUser>("User", userSchema);
+// userSchema.index({ username: 1 }, { unique: true });
+const User = mongoose.model("User", userSchema);
 
 export default User;

@@ -1,43 +1,23 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Post from "./Post";
-import ava from "@assets/images/ava.png";
+import PostShare from "./PostShare";
 import plusAddFriend from "@assets/images/plus-add-friend.png";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faLocationDot,
   faCakeCandles,
   faBriefcase,
-  faHeartCrack,
-  faHeart,
   faUserGroup,
-  faUser,
-  faRing,
   faCommentDots,
 } from "@fortawesome/free-solid-svg-icons";
+import { useSelector, useDispatch } from "react-redux";
+import { getTimelinePost } from "@/actions/PostAction";
+import { getUserProfile } from "@/actions/UserAction";
 
-// Thêm props username vào component
-interface ProfileProps {
-  username?: string;
-}
-
-const getRelationshipIcon = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "broke up":
-      return faHeartCrack;
-    case "dating":
-      return faHeart;
-    case "married":
-      return faRing;
-    case "single":
-      return faUser;
-    default:
-      return faUser;
-  }
-};
-
-const Profile = ({ username }: ProfileProps) => {
+const Profile = () => {
+  const dispatch = useDispatch();
   const [isFriend, setIsFriend] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState({
@@ -45,44 +25,88 @@ const Profile = ({ username }: ProfileProps) => {
     editProfile: false,
   });
   const navigate = useNavigate();
+  const params = useParams();
+  const profileUserId = params.id;
 
-  // State để lưu trữ thông tin user
-  const [userData, setUserData] = useState({
-    name: "",
-    dob: "",
-    location: "",
-    occupation: "",
-    relationshipStatus: "",
-    friends: 0,
-    mutuals: 0,
-    posts: [],
-  });
+  const { user: currentUser } = useSelector(
+    (state: any) => state.authReducer.authData
+  );
+  const { posts, loading: postsLoading } = useSelector(
+    (state: any) => state.postReducer
+  );
+  const { userProfiles, loading: userLoading } = useSelector(
+    (state: any) => state.userReducer
+  );
+
+  const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
+
+  const profileUser = profileUserId ? userProfiles[profileUserId] : null;
 
   useEffect(() => {
-    if (username === "my-love") {
-      setUserData({
-        name: "My love",
-        dob: "Oct 5, 2007",
-        location: "Da Nang, Vietnam",
-        occupation: "Software Engineer at ABC Company",
-        relationshipStatus: "Single",
-        friends: 200,
-        mutuals: 10,
-        posts: [],
-      });
-    } else {
-      setUserData({
-        name: username || "User not found",
-        dob: "",
-        location: "",
-        occupation: "",
-        relationshipStatus: "",
-        friends: 0,
-        mutuals: 0,
-        posts: [],
-      });
+    if (currentUser && profileUser) {
+      setIsFriend(currentUser.friends?.includes(profileUserId) || false);
     }
-  }, [username]);
+  }, [currentUser, profileUser, profileUserId]);
+
+  useEffect(() => {
+    if (
+      profileUserId &&
+      (!profileUser || Object.keys(profileUser).length === 0)
+    ) {
+      dispatch(getUserProfile(profileUserId) as any);
+    }
+  }, [dispatch, profileUserId, profileUser]);
+
+  // Lọc bài viết của profileUser
+  const userPosts = Array.isArray(posts)
+    ? posts.filter((post: any) => post.userId === profileUserId)
+    : [];
+
+  useEffect(() => {
+    if (!posts || posts.length === 0) {
+      dispatch(getTimelinePost(profileUserId || "") as any);
+    }
+  }, [dispatch, currentUser._id, currentUser.friends, posts]);
+
+  // // Xử lý khi người dùng click vào nút kết bạn
+  // const handleAddFriend = () => {
+  //   dispatch(followUser(profileUserId || "", currentUser._id) as any);
+  //   setIsFriend(true);
+  // };
+
+  // // Xử lý khi người dùng click vào nút hủy kết bạn
+  // const handleUnfriend = () => {
+  //   dispatch(unfollowUser(profileUserId || "", currentUser._id) as any);
+  //   setIsFriend(false);
+  //   setIsMenuOpen(false);
+  // };
+
+  // Hiển thị loading khi đang lấy thông tin profile
+  if (userLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-pulse text-2xl text-gray-500">
+          Đang tải thông tin người dùng...
+        </div>
+      </div>
+    );
+  }
+
+  // Nếu không tìm thấy profile người dùng
+  // if (profileUserId && !profileUser) {
+  //   return (
+  //     <div className="flex justify-center items-center h-screen">
+  //       <div className="text-2xl text-red-500">
+  //         Không tìm thấy thông tin người dùng
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  // Nếu không có profileUserId hoặc không có profileUser
+  // if (!profileUserId || !profileUser) {
+  //   return null;
+  // }
 
   return (
     <div className="flex w-full">
@@ -93,7 +117,11 @@ const Profile = ({ username }: ProfileProps) => {
             <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
               <div className="w-32 h-32 rounded-full bg-white p-1 shadow-md">
                 <img
-                  src={ava}
+                  src={
+                    profileUser.profilePicture
+                      ? serverPublic + profileUser.profilePicture
+                      : serverPublic + "defaultProfile.png"
+                  }
                   alt="Profile"
                   className="w-full h-full rounded-full object-cover"
                 />
@@ -102,15 +130,23 @@ const Profile = ({ username }: ProfileProps) => {
           </div>
 
           <div className="bg-white rounded-b-lg pt-16 pb-4 px-4 text-center shadow-sm">
-            <h2 className="text-2xl font-bold mt-2">{userData.name}</h2>
+            <h2 className="text-2xl font-bold mt-2">{profileUser.fullname}</h2>
 
             <div className="flex justify-center gap-10 text-4 text-gray-500 mt-1">
-              <span>{userData.friends} friends</span>
-              <span>{userData.mutuals} mutuals</span>
+              <span>{profileUser.friends?.length || 0} friends</span>
+              {/* <span>{userData.mutuals} mutuals</span> */}
+              <span>{userPosts.length} posts</span>
             </div>
 
             <div className="flex justify-center mt-3">
-              {isFriend ? (
+              {profileUserId === currentUser._id ? (
+                <Button
+                  variant="gradientCustom"
+                  onClick={() => navigate(`/edit-profile/${currentUser._id}`)}
+                >
+                  Edit Profile
+                </Button>
+              ) : isFriend ? (
                 <div className="flex gap-4">
                   <Button
                     variant="gradientCustom"
@@ -133,10 +169,7 @@ const Profile = ({ username }: ProfileProps) => {
                       </button>
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                        onClick={() => {
-                          setIsFriend(false);
-                          setIsMenuOpen(false);
-                        }}
+                        // onClick={handleUnfriend}
                       >
                         ❌ Unfriend
                       </button>
@@ -163,7 +196,7 @@ const Profile = ({ username }: ProfileProps) => {
                   onMouseLeave={() =>
                     setIsHovered((prev) => ({ ...prev, addFriend: false }))
                   }
-                  onClick={() => setIsFriend(true)}
+                  // onClick={handleAddFriend}
                 >
                   <img
                     src={plusAddFriend}
@@ -178,37 +211,28 @@ const Profile = ({ username }: ProfileProps) => {
             </div>
 
             <div className="grid grid-cols-1 gap-4 p-4 bg-gray-50 rounded-lg">
-              {userData.dob && (
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon
-                    icon={faCakeCandles}
-                    className="text-gray-600"
-                  />
-                  <span>{userData.dob}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon
+                  icon={faCakeCandles}
+                  className="text-gray-600"
+                />
+                <span>{profileUser.dob || "Not specified"}</span>
+              </div>
 
-              {userData.location && (
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon
-                    icon={faLocationDot}
-                    className="text-gray-600"
-                  />
-                  <span>{userData.location}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon
+                  icon={faLocationDot}
+                  className="text-gray-600"
+                />
+                <span>{profileUser.address || "Not specified"}</span>
+              </div>
 
-              {userData.occupation && (
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon
-                    icon={faBriefcase}
-                    className="text-gray-600"
-                  />
-                  <span>{userData.occupation}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faBriefcase} className="text-gray-600" />
+                <span>{profileUser.occupation || "Not specified"}</span>
+              </div>
 
-              {userData.relationshipStatus && (
+              {/* {userData.relationshipStatus && (
                 <div className="flex items-center gap-2">
                   <FontAwesomeIcon
                     icon={getRelationshipIcon(userData.relationshipStatus)}
@@ -216,18 +240,29 @@ const Profile = ({ username }: ProfileProps) => {
                   />
                   <span>{userData.relationshipStatus}</span>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>
       </div>
 
       <div className="mt-6 flex-1 pr-2">
+        <div className="ml-10 mb-4 flex justify-center">
+          {profileUserId === currentUser._id && <PostShare />}
+        </div>
         <h2 className="text-2xl font-semibold ml-10 mb-4 px-4">Posts</h2>
         <div className="flex flex-col gap-5">
-          <Post />
-          <Post />
-          <Post />
+          {postsLoading ? (
+            <div className="text-center text-gray-500 py-10">
+              <div className="animate-pulse">Đang tải bài viết...</div>
+            </div>
+          ) : userPosts.length > 0 ? (
+            userPosts.map((post: any) => <Post key={post._id} data={post} />)
+          ) : (
+            <div className="text-center text-gray-500 py-10">
+              Chưa có bài viết nào
+            </div>
+          )}
         </div>
       </div>
     </div>
