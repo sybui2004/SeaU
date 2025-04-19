@@ -40,7 +40,10 @@ const Profile = () => {
 
   const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
 
-  const profileUser = profileUserId ? userProfiles[profileUserId] : null;
+  const profileUser =
+    profileUserId === currentUser._id
+      ? currentUser
+      : userProfiles[profileUserId as string];
 
   useEffect(() => {
     if (currentUser && profileUser) {
@@ -66,7 +69,7 @@ const Profile = () => {
     if (!posts || posts.length === 0) {
       dispatch(getTimelinePost(profileUserId || "") as any);
     }
-  }, [dispatch, currentUser._id, currentUser.friends, posts]);
+  }, [dispatch, currentUser?._id, currentUser?.friends, posts]);
 
   // // Xử lý khi người dùng click vào nút kết bạn
   // const handleAddFriend = () => {
@@ -92,21 +95,21 @@ const Profile = () => {
     );
   }
 
-  // Nếu không tìm thấy profile người dùng
-  // if (profileUserId && !profileUser) {
-  //   return (
-  //     <div className="flex justify-center items-center h-screen">
-  //       <div className="text-2xl text-red-500">
-  //         Không tìm thấy thông tin người dùng
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  //Nếu không tìm thấy profile người dùng
+  if (profileUserId && !profileUser) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-2xl text-red-500">
+          Không tìm thấy thông tin người dùng
+        </div>
+      </div>
+    );
+  }
 
-  // Nếu không có profileUserId hoặc không có profileUser
-  // if (!profileUserId || !profileUser) {
-  //   return null;
-  // }
+  //Nếu không có profileUserId hoặc không có profileUser
+  if (!profileUserId || !profileUser) {
+    return null;
+  }
 
   return (
     <div className="flex w-full">
@@ -118,8 +121,8 @@ const Profile = () => {
               <div className="w-32 h-32 rounded-full bg-white p-1 shadow-md">
                 <img
                   src={
-                    profileUser.profilePicture
-                      ? serverPublic + profileUser.profilePicture
+                    profileUser?.profilePic
+                      ? serverPublic + profileUser.profilePic
                       : serverPublic + "defaultProfile.png"
                   }
                   alt="Profile"
@@ -130,16 +133,16 @@ const Profile = () => {
           </div>
 
           <div className="bg-white rounded-b-lg pt-16 pb-4 px-4 text-center shadow-sm">
-            <h2 className="text-2xl font-bold mt-2">{profileUser.fullname}</h2>
+            <h2 className="text-2xl font-bold mt-2">{profileUser?.fullname}</h2>
 
             <div className="flex justify-center gap-10 text-4 text-gray-500 mt-1">
-              <span>{profileUser.friends?.length || 0} friends</span>
+              <span>{profileUser?.friends?.length || 0} friends</span>
               {/* <span>{userData.mutuals} mutuals</span> */}
               <span>{userPosts.length} posts</span>
             </div>
 
             <div className="flex justify-center mt-3">
-              {profileUserId === currentUser._id ? (
+              {profileUserId === currentUser?._id ? (
                 <Button
                   variant="gradientCustom"
                   onClick={() => navigate(`/edit-profile/${currentUser._id}`)}
@@ -216,7 +219,7 @@ const Profile = () => {
                   icon={faCakeCandles}
                   className="text-gray-600"
                 />
-                <span>{profileUser.dob || "Not specified"}</span>
+                <span>{profileUser?.dob || "Not specified"}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -224,12 +227,12 @@ const Profile = () => {
                   icon={faLocationDot}
                   className="text-gray-600"
                 />
-                <span>{profileUser.address || "Not specified"}</span>
+                <span>{profileUser?.address || "Not specified"}</span>
               </div>
 
               <div className="flex items-center gap-2">
                 <FontAwesomeIcon icon={faBriefcase} className="text-gray-600" />
-                <span>{profileUser.occupation || "Not specified"}</span>
+                <span>{profileUser?.occupation || "Not specified"}</span>
               </div>
 
               {/* {userData.relationshipStatus && (
@@ -248,7 +251,7 @@ const Profile = () => {
 
       <div className="mt-6 flex-1 pr-2">
         <div className="ml-10 mb-4 flex justify-center">
-          {profileUserId === currentUser._id && <PostShare />}
+          {profileUserId === currentUser?._id && <PostShare />}
         </div>
         <h2 className="text-2xl font-semibold ml-10 mb-4 px-4">Posts</h2>
         <div className="flex flex-col gap-5">

@@ -3,7 +3,7 @@ interface UserProfile {
   fullname: string;
   username: string;
   friends: string[];
-  profilePicture?: string;
+  profilePic?: string;
   [key: string]: any;
 }
 

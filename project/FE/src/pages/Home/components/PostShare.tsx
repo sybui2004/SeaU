@@ -69,8 +69,8 @@ const PostShare = () => {
       <div className="flex gap-4 w-full">
         <img
           src={
-            user.profilePicture
-              ? serverPublic + user.profilePicture
+            user.profilePic
+              ? serverPublic + user.profilePic
               : serverPublic + "defaultProfile.png"
           }
           className="object-contain shrink-0 self-stretch my-auto w-14 rounded-full aspect-square border-2 border-white shadow-md"

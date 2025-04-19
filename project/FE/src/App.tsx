@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import { useSelector } from "react-redux";
 // import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -17,8 +17,21 @@ const Messages = loadComponent(() => import("./pages/Messages"));
 const Chatbot = loadComponent(() => import("./pages/Chatbot"));
 const ProfileEdit = loadComponent(() => import("./pages/ProfileEdit"));
 const Admin = loadComponent(() => import("./pages/Admin"));
+const Settings = loadComponent(() => import("./pages/Settings"));
+
 function App() {
   const user = useSelector((state: any) => state.authReducer.authData);
+
+  // Check dark mode setting and apply it
+  useEffect(() => {
+    const isDarkMode = localStorage.getItem("darkMode") === "true";
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <Routes>
@@ -38,9 +51,22 @@ function App() {
           path="/profile/:id"
           element={user ? <ProfilePage /> : <Navigate to="../auth" />}
         ></Route>
-        <Route path="/message" element={<Messages />} />
-        <Route path="/bot" element={<Chatbot />} />
-        <Route path="/edit-profile/:id" element={<ProfileEdit />} />
+        <Route
+          path="/message"
+          element={user ? <Messages /> : <Navigate to="../auth" />}
+        />
+        <Route
+          path="/bot"
+          element={user ? <Chatbot /> : <Navigate to="../auth" />}
+        />
+        <Route
+          path="/edit-profile/:id"
+          element={user ? <ProfileEdit /> : <Navigate to="../auth" />}
+        />
+        <Route
+          path="/settings"
+          element={user ? <Settings /> : <Navigate to="../auth" />}
+        />
         <Route path="/admin" element={<Admin />} />
       </Routes>
     </Suspense>

@@ -58,7 +58,7 @@ const Post = ({ data }: any) => {
                 response.data.fullname ||
                 response.data.username ||
                 "Người dùng",
-              profilePic: response.data.profilePicture,
+              profilePic: response.data.profilePic,
             });
           }
         } catch (err) {
@@ -80,7 +80,6 @@ const Post = ({ data }: any) => {
 
   const formatDate = (date: Date): string => {
     try {
-      // Định dạng đầy đủ với giờ phút
       const options: Intl.DateTimeFormatOptions = {
         day: "numeric",
         month: "numeric",

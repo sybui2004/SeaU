@@ -27,6 +27,9 @@ router.post("/:id/friend-request", sendFriendRequest);
 router.delete("/:id/friend-request", cancelFriendRequest);
 router.post("/:id/accept", acceptFriendRequest);
 router.post("/:id/reject", rejectFriendRequest);
+router.delete("/:id/unfriend", unfriendUser);
+
+// Block routes
 router.post("/:id/block", blockUser);
 router.post("/:id/unblock", unblockUser);
 router.delete("/:id/unfriend", unfriendUser);

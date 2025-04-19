@@ -2,6 +2,7 @@ import User from "../models/user.model";
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { responseUtils } from "../utils/response.utils";
+import jwt from "jsonwebtoken";
 
 export const profileController = {
   // get a User
@@ -17,22 +18,29 @@ export const profileController = {
       const { password, ...otherDetails } = user;
       responseUtils.success(res, otherDetails);
     } catch (error) {
-      responseUtils.error;
+      responseUtils.error(res, "Get user failed. Please try again.");
     }
   },
 
   // update a user
   updateUser: async (req: Request, res: Response) => {
     const id = req.params.id;
-    const { currentUserId, currentUserAdminStatus, password } = req.body;
-    if (id === currentUserId || currentUserAdminStatus) {
+    const { _id, currentUserAdminStatus, password } = req.body;
+    if (id === _id) {
       try {
         if (password) {
           const salt = await bcrypt.genSalt(10);
           req.body.password = await bcrypt.hash(password, salt);
         }
         const user = await User.findByIdAndUpdate(id, req.body, { new: true });
-        responseUtils.success(res, user);
+        const token = jwt.sign(
+          { username: user?.username, id: user?._id },
+          process.env.JWT_KEY || "",
+          {
+            expiresIn: "1h",
+          }
+        );
+        responseUtils.success(res, { user, token });
       } catch (error) {
         responseUtils.error(res, "Update user failed. Please try again.");
       }
@@ -42,6 +50,7 @@ export const profileController = {
         .json("Access Denied! You can only update your own profile");
     }
   },
+
   // delete user
   deleteUser: async (req: Request, res: Response) => {
     const id = req.params.id;

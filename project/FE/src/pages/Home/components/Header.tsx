@@ -3,10 +3,14 @@ import { Button } from "@/components/ui/button";
 import NotificationBell from "./NotificationBell";
 import searchIcon from "@assets/images/icon-search.png";
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
+
 const Header = () => {
   const [isHovered, setIsHovered] = useState(false);
+  const { user } = useSelector((state: any) => state.authReducer.authData);
+  const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
   return (
-    <div className="flex gap-10 pl-4 w-full h-[90px] text-xl whitespace-nowrap bg-white shadow-sm max-md:px-5 max-md:max-w-full sticky top-0 z-1">
+    <div className="flex gap-5 pl-4 w-full h-[90px] text-xl whitespace-nowrap bg-white shadow-sm max-md:px-5 max-md:max-w-full sticky top-0 z-1">
       <div className="flex items-center justify-center cursor-pointer">
         <Link
           to="../home"
@@ -39,8 +43,19 @@ const Header = () => {
           </Button>
         </div>
       </div>
-      <div className="flex items-center justify-center">
-        <NotificationBell></NotificationBell>
+      <div className="flex items-center justify-center gap-8">
+        <NotificationBell />
+        <Link to={`/profile/${user._id}`}>
+          <img
+            src={
+              user.profilePic
+                ? serverPublic + user.profilePic
+                : serverPublic + "defaultProfile.png"
+            }
+            alt="User Profile"
+            className="w-10 h-10 rounded-full object-cover border-2 border-blue-500 hover:scale-110 transition-transform duration-300"
+          />
+        </Link>
       </div>
     </div>
   );

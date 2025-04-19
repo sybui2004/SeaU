@@ -1,7 +1,7 @@
 import * as UploadApi from "../api/UploadRequest";
 
 export const uploadImage = (data: FormData) => {
-  return async (dispatch: any) => {
+  return async () => {
     try {
       await UploadApi.uploadImage(data);
     } catch (error) {

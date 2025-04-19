@@ -5,11 +5,9 @@ import "react-datepicker/dist/react-datepicker.css";
 import iconTick from "@assets/images/icon-tick.png";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { getUserProfile, updateUser } from "@/actions/UserAction";
-import store from "@/store/ReduxStore";
-
-// Redux store dispatch type
-type AppDispatch = typeof store.dispatch;
+import * as UserApi from "@/api/UserRequest";
+import { uploadImage } from "@/actions/UploadAction";
+import { updateUser } from "@/actions/UserAction";
 
 const languageOptions = [
   { code: "en", flag: "🇺🇸", name: "English" },
@@ -34,7 +32,8 @@ const ProfileEdit = () => {
   const [address, setAddress] = useState("Nghệ An");
   const [birthday, setBirthday] = useState<Date | null>(new Date("2004-09-20"));
   const [language, setLanguage] = useState(languageOptions[0]);
-  const [password, setPassword] = useState("");
+  const [occupation, setOccupation] = useState("");
+
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isHovered, setIsHovered] = useState<Record<string, boolean>>({
@@ -48,6 +47,7 @@ const ProfileEdit = () => {
     newpassword: false,
     confirmpassword: false,
     save: false,
+    occupation: false,
   });
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
@@ -62,6 +62,9 @@ const ProfileEdit = () => {
   const [notificationType, setNotificationType] = useState<"success" | "error">(
     "success"
   );
+
+  // Thêm state để lưu URL preview ảnh
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -80,132 +83,127 @@ const ProfileEdit = () => {
   }, [languageDropdownRef]);
 
   const handleLanguageSelect = (lang: (typeof languageOptions)[0]) => {
-    setLanguage(lang);
+    setFormData({ ...formData, language: lang.name });
     setShowLanguageDropdown(false);
-  };
-
-  const handleSave = async () => {
-    try {
-      const formData = new FormData();
-      formData.append("fullname", fullname);
-      formData.append("email", email);
-      formData.append("phone", phone);
-      formData.append("address", address);
-      formData.append("dob", birthday ? birthday.toISOString() : "");
-      formData.append("language", language.name);
-
-      if (profileImage && profileImage !== user.profilePicture) {
-        formData.append("profilePicture", profileImage);
-      }
-
-      const authData = localStorage.getItem("profile");
-      const parsedAuthData = authData ? JSON.parse(authData) : null;
-      const token = parsedAuthData?.token;
-
-      // Đảm bảo currentUserId được gửi đúng cách
-      if (user && user._id) {
-        formData.append("currentUserId", user._id);
-        console.log("Sending currentUserId:", user._id);
-      }
-
-      if (token) {
-        try {
-          await dispatch(updateUser(user._id, formData) as any);
-          console.log("Profile saved successfully");
-          setShowNotification(true);
-
-          setTimeout(() => {
-            setShowNotification(false);
-          }, 3000);
-        } catch (err: any) {
-          console.error("Error in dispatch:", err);
-          alert(err.message || "Có lỗi xảy ra khi cập nhật thông tin");
-        }
-      } else {
-        console.error("Authentication token not found");
-        alert("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
-      }
-    } catch (error: any) {
-      console.error("Error saving profile:", error);
-    }
-  };
-
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setProfileImage(imageUrl);
-
-      console.log(
-        "File đã chọn:",
-        file.name,
-        "Size:",
-        Math.round(file.size / 1024),
-        "KB"
-      );
-    }
   };
 
   const handleCameraClick = () => {
     fileInputRef.current?.click();
   };
 
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch();
   const params = useParams();
   const profileUserId = params.id;
+  const [profileUser, setProfileUser] = useState({});
   const { user } = useSelector((state: any) => state.authReducer.authData);
-  const { userProfiles, loading } = useSelector(
-    (state: any) => state.userReducer
-  );
-
-  // Get the profile user from Redux store
-  const profileUser = profileUserId ? userProfiles[profileUserId] : null;
+  const { password, ...other } = user;
+  const [formData, setFormData] = useState(other);
+  const [profileImage, setProfileImage] = useState(user.profilePic);
 
   useEffect(() => {
-    // Fetch profile user if not available in the store
-    if (profileUserId && !profileUser) {
-      dispatch(getUserProfile(profileUserId) as any);
-    }
-  }, [dispatch, profileUserId, profileUser]);
-
-  // Initialize state variables from user data
-  useEffect(() => {
-    if (user) {
-      setfullname(user.fullname || "");
-      setEmail(user.email || "");
-      setPhone(user.phone || "");
-      setAddress(user.address || "");
-      if (user.dob) {
-        setBirthday(new Date(user.dob));
+    const fetchProfileUser = async () => {
+      if (profileUserId === user._id) {
+        setProfileUser(user);
+        console.log(user);
+      } else {
+        const profileUser = await UserApi.getUser(profileUserId as string);
+        setProfileUser(profileUser);
+        console.log(profileUser);
       }
-      if (user.language) {
-        const foundLanguage = languageOptions.find(
-          (lang) => lang.name === user.language
-        );
-        if (foundLanguage) {
-          setLanguage(foundLanguage);
-        }
-      }
-      setProfileImage(user.profilePicture || "");
-    }
+    };
+    fetchProfileUser();
   }, [user]);
 
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      let img = event.target.files[0];
+      // Tạo URL tạm thời để hiển thị ảnh preview
+      const imageUrl = URL.createObjectURL(img);
+      setPreviewImage(imageUrl); // Lưu URL vào state riêng
+      setProfileImage(img);
+    }
+  };
+
+  // Dọn dẹp URL khi component unmount
+  useEffect(() => {
+    return () => {
+      // Revoke object URL để tránh rò rỉ bộ nhớ
+      if (previewImage) {
+        URL.revokeObjectURL(previewImage);
+      }
+    };
+  }, [previewImage]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setShowNotification(true);
+    setNotificationType("success");
+    setNotificationMessage({
+      title: "Processing...",
+      message: "Your profile is being updated.",
+    });
+
+    let UserData = formData;
+    if (profileImage) {
+      const data = new FormData();
+      const fileName = Date.now() + profileImage.name;
+      data.append("name", fileName);
+      data.append("file", profileImage);
+      UserData.profilePic = fileName;
+      try {
+        dispatch(uploadImage(data) as any);
+      } catch (error) {
+        console.log(error);
+        setNotificationType("error");
+        setNotificationMessage({
+          title: "Error!",
+          message: "Failed to update profile. Please try again.",
+        });
+      }
+    }
+    try {
+      dispatch(updateUser(params.id as string, UserData) as any);
+    } catch (error) {
+      console.log(error);
+      setNotificationType("error");
+      setNotificationMessage({
+        title: "Error!",
+        message: "Failed to update profile. Please try again.",
+      });
+    }
+    setNotificationType("success");
+    setNotificationMessage({
+      title: "Success!",
+      message: "Profile has been updated successfully.",
+    });
+    console.log(formData);
+
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 3000);
+  };
+
   const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
-  const [profileImage, setProfileImage] = useState(user.profilePicture);
   return (
     <div className="flex h-screen w-screen max-h-screen overflow-hidden bg-white custom-scrollbar">
       <div className="w-[70px] flex-shrink-0">
         <Sidebar />
       </div>
-      <div className="flex-1 w-full p-8 box-border overflow-y-auto bg-white">
+      <div className="flex-1 w-full p-8 pt-1 box-border bg-white">
         <div className="w-full p-6 rounded bg-white">
-          <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
+          <h2 className="text-2xl font-bold">Edit Profile</h2>
 
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-1">
             <div className="relative">
               <img
                 src={
-                  profileImage
+                  previewImage
+                    ? previewImage
+                    : profileImage
                     ? typeof profileImage === "string" &&
                       profileImage.startsWith("http")
                       ? profileImage
@@ -231,6 +229,7 @@ const ProfileEdit = () => {
                 title="Profile Picture Upload"
                 placeholder="Choose a profile picture"
                 aria-label="Upload profile picture"
+                name="profilePic"
               />
             </div>
           </div>
@@ -255,11 +254,12 @@ const ProfileEdit = () => {
               >
                 <input
                   type="text"
-                  value={fullname}
-                  onChange={(e) => setfullname(e.target.value)}
-                  placeholder="Enter your first name"
-                  title="First Name"
+                  value={formData.fullname || ""}
+                  placeholder="Enter your full name"
+                  title="Full Name"
+                  name="fullname"
                   className="w-full bg-transparent outline-none"
+                  onChange={handleChange}
                 />
               </div>
             </div>
@@ -281,11 +281,12 @@ const ProfileEdit = () => {
               >
                 <input
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email || ""}
                   placeholder="Enter your email address"
                   title="Email"
+                  name="email"
                   className="w-full bg-transparent outline-none"
+                  onChange={handleChange}
                 />
               </div>
             </div>
@@ -309,11 +310,12 @@ const ProfileEdit = () => {
               >
                 <input
                   type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  value={formData.phone || ""}
                   placeholder="Enter your phone number"
                   title="Contact Number"
+                  name="phone"
                   className="w-full bg-transparent outline-none"
+                  onChange={handleChange}
                 />
               </div>
             </div>
@@ -337,11 +339,41 @@ const ProfileEdit = () => {
               >
                 <input
                   type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  value={formData.address || ""}
                   placeholder="Enter your street address"
                   title="Address"
+                  name="address"
                   className="w-full bg-transparent outline-none"
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1">
+                Occupation
+              </label>
+              <div
+                className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
+                  isHovered.occupation
+                    ? "border-[#1CA7EC] shadow-md"
+                    : "border-transparent"
+                } text-zinc-900 max-md:px-5 max-md:max-w-full overflow-hidden`}
+                onMouseEnter={() =>
+                  setIsHovered((prev) => ({ ...prev, occupation: true }))
+                }
+                onMouseLeave={() =>
+                  setIsHovered((prev) => ({ ...prev, occupation: false }))
+                }
+              >
+                <input
+                  type="text"
+                  value={formData.occupation || ""}
+                  placeholder="Enter your occupation"
+                  title="Occupation"
+                  name="occupation"
+                  className="w-full bg-transparent outline-none"
+                  onChange={handleChange}
                 />
               </div>
             </div>
@@ -365,8 +397,10 @@ const ProfileEdit = () => {
                   }
                 >
                   <DatePicker
-                    selected={birthday}
-                    onChange={(date: Date | null) => setBirthday(date)}
+                    selected={formData.dob ? new Date(formData.dob) : null}
+                    onChange={(date: Date | null) =>
+                      setFormData({ ...formData, dob: date })
+                    }
                     dateFormat="dd/MM/yyyy"
                     showYearDropdown
                     scrollableYearDropdown
@@ -380,6 +414,7 @@ const ProfileEdit = () => {
                         className="w-full h-full bg-transparent outline-none mt-3 flex items-center"
                         placeholder="Select birthday"
                         title="Birthday"
+                        name="dob"
                       />
                     }
                   />
@@ -404,7 +439,7 @@ const ProfileEdit = () => {
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
                 >
                   <div className="flex items-center w-full">
-                    <span>{language.name}</span>
+                    <span>{formData.language || "Select language"}</span>
                   </div>
                   <div className="absolute right-4">
                     <svg
@@ -442,89 +477,6 @@ const ProfileEdit = () => {
                     ))}
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm text-gray-600 mb-1">
-                Current Password
-              </label>
-              <div
-                className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
-                  isHovered.password
-                    ? "border-[#1CA7EC] shadow-md"
-                    : "border-transparent"
-                } text-zinc-900 max-md:px-5 max-md:max-w-full overflow-hidden relative`}
-                onMouseEnter={() =>
-                  setIsHovered((prev) => ({ ...prev, password: true }))
-                }
-                onMouseLeave={() =>
-                  setIsHovered((prev) => ({ ...prev, password: false }))
-                }
-              >
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your current password"
-                  title="Current Password"
-                  className="w-full bg-transparent outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm text-gray-600 mb-1">
-                New Password
-              </label>
-              <div
-                className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
-                  isHovered.newpassword
-                    ? "border-[#1CA7EC] shadow-md"
-                    : "border-transparent"
-                } text-zinc-900 max-md:px-5 max-md:max-w-full overflow-hidden relative`}
-                onMouseEnter={() =>
-                  setIsHovered((prev) => ({ ...prev, newpassword: true }))
-                }
-                onMouseLeave={() =>
-                  setIsHovered((prev) => ({ ...prev, newpassword: false }))
-                }
-              >
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter your new password"
-                  title="New Password"
-                  className="w-full bg-transparent outline-none"
-                />
-              </div>
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm text-gray-600 mb-1">
-                Confirm Password
-              </label>
-              <div
-                className={`flex items-center w-full h-12 px-4 leading-none rounded-2xl border border-solid bg-zinc-100 transition-all duration-300 ${
-                  isHovered.confirmpassword
-                    ? "border-[#1CA7EC] shadow-md"
-                    : "border-transparent"
-                } text-zinc-900 max-md:px-5 max-md:max-w-full overflow-hidden relative`}
-                onMouseEnter={() =>
-                  setIsHovered((prev) => ({ ...prev, confirmpassword: true }))
-                }
-                onMouseLeave={() =>
-                  setIsHovered((prev) => ({ ...prev, confirmpassword: false }))
-                }
-              >
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your new password"
-                  title="Confirm Password"
-                  className="w-full bg-transparent outline-none"
-                />
               </div>
             </div>
             <div>

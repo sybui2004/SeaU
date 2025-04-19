@@ -57,12 +57,7 @@ const userSchema = new mongoose.Schema(
     //   required: true,
     //   default: "active",
     // },
-    socialMedia: {
-      facebook: { type: String, default: null },
-      twitter: { type: String, default: null },
-      instagram: { type: String, default: null },
-      linkedin: { type: String, default: null },
-    },
+
     occupation: {
       type: String,
       required: false,
