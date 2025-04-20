@@ -11,10 +11,22 @@ export const updateUser = (id: string, formData: any) =>
 // export const getUserFriends = (userId: string) =>
 //   API.get(`/user/${userId}/friends`);
 
-// // API kết bạn với người dùng
-// export const followUser = (id: string, currentUserId: string) =>
-//   API.put(`/user/${id}/follow`, { currentUserId });
+// API kết bạn với người dùng
+export const sendFriendRequest = (id: string, currentUserId: string) =>
+  API.post(`/user/${id}/friend-request`, { currentUserId });
 
-// // API hủy kết bạn
-// export const unfollowUser = (id: string, currentUserId: string) =>
-//   API.put(`/user/${id}/unfollow`, { currentUserId });
+// API chấp nhận kết bạn
+export const acceptFriendRequest = (id: string, currentUserId: string) =>
+  API.post(`/user/${id}/accept`, { currentUserId });
+
+// API từ chối kết bạn
+export const rejectFriendRequest = (id: string, currentUserId: string) =>
+  API.post(`/user/${id}/reject`, { currentUserId });
+
+// API hủy lời mời kết bạn
+export const cancelFriendRequest = (id: string, currentUserId: string) =>
+  API.delete(`/user/${id}/friend-request`, { data: { currentUserId } });
+
+// API hủy kết bạn
+export const unfriendUser = (id: string, currentUserId: string) =>
+  API.delete(`/user/${id}/unfriend`, { data: { currentUserId } });

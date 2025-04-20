@@ -73,7 +73,7 @@ const PostShare = () => {
               ? serverPublic + user.profilePic
               : serverPublic + "defaultProfile.png"
           }
-          className="object-contain shrink-0 self-stretch my-auto w-14 rounded-full aspect-square border-2 border-white shadow-md"
+          className="object-cover shrink-0 self-stretch my-auto w-14 rounded-full aspect-square border-2 border-white shadow-md"
           alt="Post author avatar"
         />
         <input

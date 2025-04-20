@@ -31,7 +31,7 @@ export const getPost = async (req: Request, res: Response) => {
 // Update a Post
 export const updatePost = async (req: Request, res: Response) => {
   const postId = req.params.id;
-  const { userId } = req.body;
+  const { userId, currentUserAdminStatus } = req.body;
 
   try {
     const post = await Post.findById(postId);
@@ -39,7 +39,7 @@ export const updatePost = async (req: Request, res: Response) => {
       res.status(404).json("Post not found");
       return;
     }
-    if (post.userId == userId) {
+    if (post.userId == userId || currentUserAdminStatus) {
       await post.updateOne({ $set: req.body });
       responseUtils.success(res, "Post Updated");
     } else {
@@ -53,7 +53,7 @@ export const updatePost = async (req: Request, res: Response) => {
 // Delete a Post
 export const deletePost = async (req: Request, res: Response) => {
   const postId = req.params.id;
-  const { userId } = req.body;
+  const { userId, currentUserAdminStatus } = req.body;
 
   try {
     const post = await Post.findById(postId);
@@ -61,7 +61,7 @@ export const deletePost = async (req: Request, res: Response) => {
       res.status(404).json("Post not found");
       return;
     }
-    if (post.userId == userId) {
+    if (post.userId == userId || currentUserAdminStatus) {
       await post.deleteOne();
       responseUtils.success(res, "Post deleted");
     } else {
@@ -75,7 +75,7 @@ export const deletePost = async (req: Request, res: Response) => {
 // React a Post
 export const likePost = async (req: Request, res: Response) => {
   const id = req.params.id;
-  const { userId } = req.body;
+  const { userId, currentUserAdminStatus } = req.body;
 
   try {
     const post = await Post.findById(id);
@@ -83,7 +83,7 @@ export const likePost = async (req: Request, res: Response) => {
       res.status(404).json("Post not found");
       return;
     }
-    if (!post.likes.includes(userId)) {
+    if (!post.likes.includes(userId) || currentUserAdminStatus) {
       await post.updateOne({ $push: { likes: userId } });
       responseUtils.success(res, "Post liked");
     } else {

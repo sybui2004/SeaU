@@ -54,10 +54,7 @@ const Post = ({ data }: any) => {
           if (response.data) {
             setPosterInfo({
               id: data.userId,
-              name:
-                response.data.fullname ||
-                response.data.username ||
-                "Người dùng",
+              name: response.data.fullname || "Người dùng",
               profilePic: response.data.profilePic,
             });
           }
@@ -122,7 +119,7 @@ const Post = ({ data }: any) => {
                 ? serverPublic + posterInfo.profilePic
                 : serverPublic + "defaultProfile.png"
             }
-            className="object-contain shrink-0 self-stretch my-auto w-14 rounded-full aspect-square border-2 border-white shadow-md"
+            className="object-cover shrink-0 self-stretch my-auto w-14 rounded-full aspect-square border-2 border-white shadow-md"
             alt="Post author avatar"
           />
           <div className="flex flex-col">
@@ -136,27 +133,6 @@ const Post = ({ data }: any) => {
               {formatDate(postDate)}
             </div>
           </div>
-          <Button
-            variant="gradientCustom"
-            className={`flex items-center gap-2 px-3 py-3 mt-1.5 h-full text-base leading-loose text-white shadow-[0_4px_10px_rgba(28,167,236,0.5)] transition-all duration-300 ${
-              isHovered.addFriend ? "shadow-lg scale-105" : ""
-            } cursor-pointer`}
-            onMouseEnter={() =>
-              setIsHovered((prev) => ({ ...prev, addFriend: true }))
-            }
-            onMouseLeave={() =>
-              setIsHovered((prev) => ({ ...prev, addFriend: false }))
-            }
-          >
-            <img
-              src={plusAddFriend}
-              className={`object-contain shrink-0 aspect-[1.2] w-[30px] transition-transform duration-300 ${
-                isHovered.addFriend ? "scale-110" : ""
-              }`}
-              alt="Add friend icon"
-            />
-            <div>Add friend</div>
-          </Button>
         </div>
         <PostContent text={data?.content || ""} />
       </div>

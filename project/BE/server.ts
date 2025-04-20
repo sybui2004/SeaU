@@ -9,6 +9,9 @@ import authRoutes from "./routes/auth.route";
 import postRoutes from "./routes/post.route";
 import uploadRoutes from "./routes/upload.route";
 import conversationRoutes from "./routes/conversation.route";
+import messageRoutes from "./routes/message.route";
+import commentRoutes from "./routes/comment.route";
+import searchRoute from "./routes/search.route";
 
 const app = express();
 
@@ -30,7 +33,11 @@ app.use("/user", userRoutes);
 app.use("/auth", authRoutes);
 app.use("/post", postRoutes);
 app.use("/chat", conversationRoutes);
+app.use("/message", messageRoutes);
+app.use("/comment", commentRoutes);
 app.use("/upload", uploadRoutes);
+app.use("/search", searchRoute);
+app.use("/conversation", conversationRoutes);
 
 app.listen(port, () => {
   connectDB();

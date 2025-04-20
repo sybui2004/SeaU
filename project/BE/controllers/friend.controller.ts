@@ -26,12 +26,12 @@ export const friendController = {
         return;
       }
 
-      if (receiver.pendingFriendRequests.includes(currentUserId)) {
+      if (receiver.receivedFriendRequests.includes(currentUserId)) {
         res.status(400).json("Friend request already sent");
         return;
       }
 
-      if (sender.pendingFriendRequests.includes(receiverId)) {
+      if (sender.receivedFriendRequests.includes(receiverId)) {
         res
           .status(400)
           .json(
@@ -40,21 +40,11 @@ export const friendController = {
         return;
       }
 
-      if (
-        receiver.blockedUsers &&
-        receiver.blockedUsers.includes(currentUserId)
-      ) {
-        res.status(403).json("Unable to send friend request");
-        return;
-      }
-
-      if (sender.blockedUsers && sender.blockedUsers.includes(receiverId)) {
-        res.status(403).json("You need to unblock this user first");
-        return;
-      }
-
       await receiver.updateOne({
-        $push: { pendingFriendRequests: currentUserId },
+        $push: { receivedFriendRequests: currentUserId },
+      });
+      await sender.updateOne({
+        $push: { sentFriendRequests: receiverId },
       });
 
       responseUtils.success(res, "Friend request sent successfully");
@@ -75,21 +65,24 @@ export const friendController = {
 
     try {
       const receiver = (await User.findById(receiverId)) as any;
-
-      if (!receiver) {
+      const sender = (await User.findById(currentUserId)) as any;
+      if (!receiver || !sender) {
         res.status(404).json("User not found");
         return;
       }
 
-      if (!receiver.pendingFriendRequests.includes(currentUserId)) {
+      if (!receiver.receivedFriendRequests.includes(currentUserId)) {
         res.status(400).json("No friend request to cancel");
         return;
       }
 
       await receiver.updateOne({
-        $pull: { pendingFriendRequests: currentUserId },
+        $pull: { receivedFriendRequests: currentUserId },
       });
 
+      await sender.updateOne({
+        $pull: { sentFriendRequests: receiverId },
+      });
       responseUtils.success(res, "Friend request canceled successfully");
     } catch (error) {
       responseUtils.error(
@@ -118,16 +111,19 @@ export const friendController = {
         return;
       }
 
-      if (!receiver.pendingFriendRequests.includes(senderId)) {
+      if (!receiver.receivedFriendRequests.includes(senderId)) {
         res.status(400).json("No friend request from this user");
         return;
       }
 
       await receiver.updateOne({
         $push: { friends: senderId },
-        $pull: { pendingFriendRequests: senderId },
+        $pull: { receivedFriendRequests: senderId },
       });
-      await sender.updateOne({ $push: { friends: currentUserId } });
+      await sender.updateOne({
+        $push: { friends: currentUserId },
+        $pull: { sentFriendRequests: currentUserId },
+      });
 
       responseUtils.success(res, "Friend request accepted successfully");
     } catch (error) {
@@ -150,19 +146,23 @@ export const friendController = {
 
     try {
       const receiver = (await User.findById(currentUserId)) as any;
-
-      if (!receiver) {
+      const sender = (await User.findById(senderId)) as any;
+      if (!receiver || !sender) {
         res.status(404).json("User not found");
         return;
       }
 
-      if (!receiver.pendingFriendRequests.includes(senderId)) {
+      if (!receiver.receivedFriendRequests.includes(senderId)) {
         res.status(400).json("No friend request from this user");
         return;
       }
 
-      await receiver.updateOne({ $pull: { pendingFriendRequests: senderId } });
-
+      await receiver.updateOne({
+        $pull: { receivedFriendRequests: senderId },
+      });
+      await sender.updateOne({
+        $pull: { sentFriendRequests: currentUserId },
+      });
       responseUtils.success(res, "Friend request rejected successfully");
     } catch (error) {
       responseUtils.error(

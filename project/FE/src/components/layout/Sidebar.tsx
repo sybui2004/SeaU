@@ -138,7 +138,7 @@ const Sidebar = () => {
                 ? serverPublic + user.profilePic
                 : serverPublic + "defaultProfile.png"
             }
-            className="object-contain m-auto w-[36px] rounded-3xl aspect-square max-md:mt-10"
+            className="object-cover m-auto w-[36px] rounded-3xl aspect-square max-md:mt-10"
             alt="User avatar"
           />
         </div>
@@ -174,7 +174,7 @@ const Sidebar = () => {
 
       {/* Logout button */}
       <div
-        className={`mt-3 ${getItemStyles("logout")} ${
+        className={`mt-3 p-2 rounded-2xl ${getItemStyles("logout")} ${
           isLogoutHovered ? "hover:bg-red-100" : ""
         }`}
         onMouseEnter={() => {

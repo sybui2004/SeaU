@@ -9,6 +9,22 @@ import * as UserApi from "@/api/UserRequest";
 import { uploadImage } from "@/actions/UploadAction";
 import { updateUser } from "@/actions/UserAction";
 
+// Định nghĩa interface cho dữ liệu người dùng
+interface UserData {
+  _id?: string;
+  fullname?: string;
+  email?: string;
+  username?: string;
+  phone?: string;
+  address?: string;
+  dob?: Date | string | null;
+  language?: string;
+  occupation?: string;
+  profilePic?: string | File;
+  friends?: string[];
+  [key: string]: any;
+}
+
 const languageOptions = [
   { code: "en", flag: "🇺🇸", name: "English" },
   { code: "fr", flag: "🇫🇷", name: "French" },
@@ -94,7 +110,7 @@ const ProfileEdit = () => {
   const dispatch = useDispatch();
   const params = useParams();
   const profileUserId = params.id;
-  const [profileUser, setProfileUser] = useState({});
+  const [profileUser, setProfileUser] = useState<UserData>({});
   const { user } = useSelector((state: any) => state.authReducer.authData);
   const { password, ...other } = user;
   const [formData, setFormData] = useState(other);
@@ -116,11 +132,15 @@ const ProfileEdit = () => {
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-      let img = event.target.files[0];
+      // Lấy file ảnh đã chọn
+      const file = event.target.files[0];
       // Tạo URL tạm thời để hiển thị ảnh preview
-      const imageUrl = URL.createObjectURL(img);
-      setPreviewImage(imageUrl); // Lưu URL vào state riêng
-      setProfileImage(img);
+      const imageUrl = URL.createObjectURL(file);
+      // Lưu URL vào state để hiển thị preview
+      setPreviewImage(imageUrl);
+      // Lưu file ảnh vào state để upload sau
+      setProfileImage(file);
+      console.log("Selected new profile image:", file.name);
     }
   };
 
@@ -147,26 +167,42 @@ const ProfileEdit = () => {
       message: "Your profile is being updated.",
     });
 
-    let UserData = formData;
-    if (profileImage) {
+    // Tạo bản sao của formData để tránh thay đổi state trực tiếp
+    let userData = { ...formData };
+
+    // Xử lý ảnh mới nếu có
+    if (profileImage instanceof File) {
+      // Nếu profileImage là File (đã chọn ảnh mới)
       const data = new FormData();
-      const fileName = Date.now() + profileImage.name;
+      const fileName = Date.now() + (profileImage.name || "profile.jpg");
       data.append("name", fileName);
       data.append("file", profileImage);
-      UserData.profilePic = fileName;
+      userData.profilePic = fileName;
       try {
         dispatch(uploadImage(data) as any);
+        console.log("New profile image uploaded:", fileName);
       } catch (error) {
         console.log(error);
         setNotificationType("error");
         setNotificationMessage({
           title: "Error!",
-          message: "Failed to update profile. Please try again.",
+          message: "Failed to upload image. Please try again.",
         });
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 3000);
+        return;
       }
     }
     try {
-      dispatch(updateUser(params.id as string, UserData) as any);
+      dispatch(updateUser(params.id as string, userData) as any);
+      console.log("Profile data being saved:", userData);
+
+      setNotificationType("success");
+      setNotificationMessage({
+        title: "Success!",
+        message: "Profile has been updated successfully.",
+      });
     } catch (error) {
       console.log(error);
       setNotificationType("error");
@@ -175,12 +211,6 @@ const ProfileEdit = () => {
         message: "Failed to update profile. Please try again.",
       });
     }
-    setNotificationType("success");
-    setNotificationMessage({
-      title: "Success!",
-      message: "Profile has been updated successfully.",
-    });
-    console.log(formData);
 
     setTimeout(() => {
       setShowNotification(false);
@@ -193,7 +223,7 @@ const ProfileEdit = () => {
       <div className="w-[70px] flex-shrink-0">
         <Sidebar />
       </div>
-      <div className="flex-1 w-full p-8 pt-1 box-border bg-white">
+      <div className="flex-1 w-full p-8 pt-1 box-border overflow-y-auto bg-white">
         <div className="w-full p-6 rounded bg-white">
           <h2 className="text-2xl font-bold">Edit Profile</h2>
 
@@ -203,11 +233,11 @@ const ProfileEdit = () => {
                 src={
                   previewImage
                     ? previewImage
-                    : profileImage
-                    ? typeof profileImage === "string" &&
-                      profileImage.startsWith("http")
-                      ? profileImage
-                      : serverPublic + profileImage
+                    : formData.profilePic
+                    ? typeof formData.profilePic === "string" &&
+                      formData.profilePic.startsWith("http")
+                      ? formData.profilePic
+                      : serverPublic + formData.profilePic
                     : serverPublic + "defaultProfile.png"
                 }
                 alt="Profile"

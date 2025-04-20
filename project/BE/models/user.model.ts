@@ -76,11 +76,11 @@ const userSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
-    pendingFriendRequests: {
+    sentFriendRequests: {
       type: Array,
       default: [],
     },
-    blockedUsers: {
+    receivedFriendRequests: {
       type: Array,
       default: [],
     },

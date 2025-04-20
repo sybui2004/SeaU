@@ -3,6 +3,10 @@ import React, { Suspense, useEffect } from "react";
 import { useSelector } from "react-redux";
 // import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import PrivateRoute from "./components/PrivateRoutes";
+
 const loadComponent = (importFunc: any) =>
   React.lazy(() =>
     importFunc().catch((err: any) => {
@@ -10,6 +14,7 @@ const loadComponent = (importFunc: any) =>
       return { default: () => <div>Error loading page.</div> };
     })
   );
+
 const Home = loadComponent(() => import("./pages/Home"));
 const Auth = loadComponent(() => import("./pages/Auth"));
 const ProfilePage = loadComponent(() => import("./pages/ProfilePage"));
@@ -18,6 +23,7 @@ const Chatbot = loadComponent(() => import("./pages/Chatbot"));
 const ProfileEdit = loadComponent(() => import("./pages/ProfileEdit"));
 const Admin = loadComponent(() => import("./pages/Admin"));
 const Settings = loadComponent(() => import("./pages/Settings"));
+const SearchResults = loadComponent(() => import("./pages/SearchResults"));
 
 function App() {
   const user = useSelector((state: any) => state.authReducer.authData);
@@ -33,43 +39,98 @@ function App() {
   }, []);
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <Routes>
-        <Route
-          path="/"
-          element={user ? <Navigate to="home" /> : <Navigate to="auth" />}
-        />
-        <Route
-          path="/home"
-          element={user ? <Home /> : <Navigate to="../auth" />}
-        />
-        <Route
-          path="/auth"
-          element={user ? <Navigate to="../home" /> : <Auth />}
-        />
-        <Route
-          path="/profile/:id"
-          element={user ? <ProfilePage /> : <Navigate to="../auth" />}
-        ></Route>
-        <Route
-          path="/message"
-          element={user ? <Messages /> : <Navigate to="../auth" />}
-        />
-        <Route
-          path="/bot"
-          element={user ? <Chatbot /> : <Navigate to="../auth" />}
-        />
-        <Route
-          path="/edit-profile/:id"
-          element={user ? <ProfileEdit /> : <Navigate to="../auth" />}
-        />
-        <Route
-          path="/settings"
-          element={user ? <Settings /> : <Navigate to="../auth" />}
-        />
-        <Route path="/admin" element={<Admin />} />
-      </Routes>
-    </Suspense>
+    <>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+
+      <Suspense fallback={<div>Loading...</div>}>
+        <Routes>
+          <Route
+            path="/"
+            element={user ? <Navigate to="home" /> : <Navigate to="auth" />}
+          />
+          <Route
+            path="/home"
+            element={
+              <PrivateRoute>
+                <Home />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/search"
+            element={
+              <PrivateRoute>
+                <SearchResults />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/auth"
+            element={user ? <Navigate to="../home" /> : <Auth />}
+          />
+          <Route
+            path="/profile/:id"
+            element={
+              <PrivateRoute>
+                <ProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/message"
+            element={
+              <PrivateRoute>
+                <Messages />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/bot"
+            element={
+              <PrivateRoute>
+                <Chatbot />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/edit-profile/:id"
+            element={
+              <PrivateRoute>
+                <ProfileEdit />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute>
+                <Admin />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <PrivateRoute>
+                <Settings />
+              </PrivateRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Suspense>
+    </>
   );
 }
 

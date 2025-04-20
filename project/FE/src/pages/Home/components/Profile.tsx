@@ -13,12 +13,40 @@ import {
   faCommentDots,
 } from "@fortawesome/free-solid-svg-icons";
 import { useSelector, useDispatch } from "react-redux";
-import { getTimelinePost } from "@/actions/PostAction";
-import { getUserProfile } from "@/actions/UserAction";
+import {
+  getUserProfile,
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  cancelFriendRequest,
+  unfriendUser,
+} from "@/actions/UserAction";
+import axios from "axios";
+
+// Hàm format ngày tháng
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return "Not specified";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return "Not specified";
+    }
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "Not specified";
+  }
+};
 
 const Profile = () => {
   const dispatch = useDispatch();
-  const [isFriend, setIsFriend] = useState(false);
+  const [friendStatus, setFriendStatus] = useState<
+    "not_friend" | "pending" | "received" | "friend"
+  >("not_friend");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState({
     addFriend: false,
@@ -31,72 +59,153 @@ const Profile = () => {
   const { user: currentUser } = useSelector(
     (state: any) => state.authReducer.authData
   );
-  const { posts, loading: postsLoading } = useSelector(
-    (state: any) => state.postReducer
-  );
-  const { userProfiles, loading: userLoading } = useSelector(
-    (state: any) => state.userReducer
-  );
+
+  // State cho thông tin người dùng
+  const [userInfo, setUserInfo] = useState<any>({
+    id: profileUserId,
+    fullname: null,
+    profilePic: null,
+    dob: null,
+    address: null,
+    occupation: null,
+    friends: [],
+    receivedFriendRequests: [],
+    sentFriendRequests: [],
+  });
+
+  // State để lưu bài đăng của người dùng
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+
+  // Lấy thông tin người dùng từ API
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:3000/user/${profileUserId}`
+        );
+        if (response.data) {
+          console.log("API response data:", response.data);
+          setUserInfo({
+            id: profileUserId,
+            fullname: response.data.fullname || "Người dùng",
+            profilePic: response.data.profilePic,
+            dob: response.data.dob || null,
+            address: response.data.address || null,
+            occupation: response.data.occupation || null,
+            friends: response.data.friends || [],
+            receivedFriendRequests: response.data.receivedFriendRequests || [],
+            sentFriendRequests: response.data.sentFriendRequests || [],
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching user info:", err);
+      }
+    };
+
+    fetchUserInfo();
+  }, [profileUserId]);
+
+  // Lấy bài đăng của người dùng từ API
+  useEffect(() => {
+    const fetchUserPosts = async () => {
+      if (!profileUserId) return;
+
+      setLoadingPosts(true);
+      try {
+        const response = await axios.get(
+          `http://localhost:3000/post/${profileUserId}/timeline`
+        );
+
+        if (response.data) {
+          console.log("User posts response:", response.data);
+          const filteredPosts = response.data.filter(
+            (post: any) => post.userId === profileUserId
+          );
+
+          setUserPosts(filteredPosts);
+        } else {
+          setUserPosts([]);
+        }
+      } catch (err) {
+        console.error("Error fetching user posts:", err);
+        setUserPosts([]);
+      } finally {
+        setLoadingPosts(false);
+      }
+    };
+
+    fetchUserPosts();
+  }, [profileUserId]);
 
   const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
 
-  const profileUser =
-    profileUserId === currentUser._id
-      ? currentUser
-      : userProfiles[profileUserId as string];
-
   useEffect(() => {
-    if (currentUser && profileUser) {
-      setIsFriend(currentUser.friends?.includes(profileUserId) || false);
+    if (currentUser && userInfo) {
+      if (userInfo.friends?.includes(currentUser._id)) {
+        setFriendStatus("friend");
+      } else if (userInfo.receivedFriendRequests?.includes(currentUser._id)) {
+        setFriendStatus("pending");
+      } else if (currentUser.receivedFriendRequests?.includes(profileUserId)) {
+        setFriendStatus("received");
+      } else {
+        setFriendStatus("not_friend");
+      }
     }
-  }, [currentUser, profileUser, profileUserId]);
+  }, [currentUser, userInfo, profileUserId]);
 
   useEffect(() => {
-    if (
-      profileUserId &&
-      (!profileUser || Object.keys(profileUser).length === 0)
-    ) {
+    if (profileUserId && (!userInfo || Object.keys(userInfo).length === 0)) {
       dispatch(getUserProfile(profileUserId) as any);
     }
-  }, [dispatch, profileUserId, profileUser]);
+  }, [dispatch, profileUserId, userInfo]);
 
-  // Lọc bài viết của profileUser
-  const userPosts = Array.isArray(posts)
-    ? posts.filter((post: any) => post.userId === profileUserId)
-    : [];
+  // Xử lý khi người dùng click vào nút kết bạn
+  const handleAddFriend = () => {
+    dispatch(
+      sendFriendRequest(profileUserId as string, currentUser._id) as any
+    );
+    setFriendStatus("pending");
+    setIsMenuOpen(false);
+  };
 
-  useEffect(() => {
-    if (!posts || posts.length === 0) {
-      dispatch(getTimelinePost(profileUserId || "") as any);
-    }
-  }, [dispatch, currentUser?._id, currentUser?.friends, posts]);
+  // Xử lý khi người dùng click vào nút hủy lời mời kết bạn
+  const handleCancelRequest = () => {
+    dispatch(
+      cancelFriendRequest(profileUserId as string, currentUser._id) as any
+    );
+    setFriendStatus("not_friend");
+    setIsMenuOpen(false);
+  };
 
-  // // Xử lý khi người dùng click vào nút kết bạn
-  // const handleAddFriend = () => {
-  //   dispatch(followUser(profileUserId || "", currentUser._id) as any);
-  //   setIsFriend(true);
-  // };
+  // Xử lý khi người dùng click vào nút chấp nhận lời mời kết bạn
+  const handleAcceptRequest = () => {
+    dispatch(
+      acceptFriendRequest(profileUserId as string, currentUser._id) as any
+    );
+    setFriendStatus("friend");
+    setIsMenuOpen(false);
+  };
 
-  // // Xử lý khi người dùng click vào nút hủy kết bạn
-  // const handleUnfriend = () => {
-  //   dispatch(unfollowUser(profileUserId || "", currentUser._id) as any);
-  //   setIsFriend(false);
-  //   setIsMenuOpen(false);
-  // };
+  // Xử lý khi người dùng click vào nút từ chối lời mời kết bạn
+  const handleRejectRequest = () => {
+    dispatch(
+      rejectFriendRequest(profileUserId as string, currentUser._id) as any
+    );
+    setFriendStatus("not_friend");
+    setIsMenuOpen(false);
+  };
+
+  // Xử lý khi người dùng click vào nút hủy kết bạn
+  const handleUnfriend = () => {
+    dispatch(unfriendUser(profileUserId as string, currentUser._id) as any);
+    setFriendStatus("not_friend");
+    setIsMenuOpen(false);
+  };
 
   // Hiển thị loading khi đang lấy thông tin profile
-  if (userLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-pulse text-2xl text-gray-500">
-          Đang tải thông tin người dùng...
-        </div>
-      </div>
-    );
-  }
-
   //Nếu không tìm thấy profile người dùng
-  if (profileUserId && !profileUser) {
+  if (profileUserId && !userInfo) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-2xl text-red-500">
@@ -107,7 +216,7 @@ const Profile = () => {
   }
 
   //Nếu không có profileUserId hoặc không có profileUser
-  if (!profileUserId || !profileUser) {
+  if (!profileUserId || !userInfo) {
     return null;
   }
 
@@ -121,8 +230,8 @@ const Profile = () => {
               <div className="w-32 h-32 rounded-full bg-white p-1 shadow-md">
                 <img
                   src={
-                    profileUser?.profilePic
-                      ? serverPublic + profileUser.profilePic
+                    userInfo?.profilePic
+                      ? serverPublic + userInfo.profilePic
                       : serverPublic + "defaultProfile.png"
                   }
                   alt="Profile"
@@ -133,10 +242,10 @@ const Profile = () => {
           </div>
 
           <div className="bg-white rounded-b-lg pt-16 pb-4 px-4 text-center shadow-sm">
-            <h2 className="text-2xl font-bold mt-2">{profileUser?.fullname}</h2>
+            <h2 className="text-2xl font-bold mt-2">{userInfo?.fullname}</h2>
 
             <div className="flex justify-center gap-10 text-4 text-gray-500 mt-1">
-              <span>{profileUser?.friends?.length || 0} friends</span>
+              <span>{userInfo?.friends?.length || 0} friends</span>
               {/* <span>{userData.mutuals} mutuals</span> */}
               <span>{userPosts.length} posts</span>
             </div>
@@ -149,7 +258,7 @@ const Profile = () => {
                 >
                   Edit Profile
                 </Button>
-              ) : isFriend ? (
+              ) : friendStatus === "friend" ? (
                 <div className="flex gap-4">
                   <Button
                     variant="gradientCustom"
@@ -160,19 +269,10 @@ const Profile = () => {
                     <div>Friend</div>
                   </Button>
                   {isMenuOpen && (
-                    <div className="absolute left-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-300">
+                    <div className="absolute left-0 ml-4 mt-10 w-40 bg-white rounded-lg shadow-lg border border-gray-300">
                       <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                        onClick={() => {
-                          alert("User has been blocked!");
-                          setIsMenuOpen(false);
-                        }}
-                      >
-                        🚫 Block
-                      </button>
-                      <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                        // onClick={handleUnfriend}
+                        onClick={handleUnfriend}
                       >
                         ❌ Unfriend
                       </button>
@@ -187,6 +287,31 @@ const Profile = () => {
                     <div>Message</div>
                   </Button>
                 </div>
+              ) : friendStatus === "pending" ? (
+                <Button
+                  variant="gradientCustom"
+                  className="flex items-center gap-2 px-3 py-3 mt-1.5 text-base leading-loose text-white shadow-md transition-all duration-300"
+                  onClick={handleCancelRequest}
+                >
+                  Pending Request
+                </Button>
+              ) : friendStatus === "received" ? (
+                <div className="flex gap-2">
+                  <Button
+                    variant="gradientCustom"
+                    className="flex items-center gap-2 px-3 py-3 mt-1.5 text-base leading-loose text-white shadow-md transition-all duration-300"
+                    onClick={handleAcceptRequest}
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    variant="gradientCustom"
+                    className="flex items-center gap-2 px-3 py-3 mt-1.5 text-base leading-loose text-white shadow-md transition-all duration-300"
+                    onClick={handleRejectRequest}
+                  >
+                    Reject
+                  </Button>
+                </div>
               ) : (
                 <Button
                   variant="gradientCustom"
@@ -199,7 +324,7 @@ const Profile = () => {
                   onMouseLeave={() =>
                     setIsHovered((prev) => ({ ...prev, addFriend: false }))
                   }
-                  // onClick={handleAddFriend}
+                  onClick={handleAddFriend}
                 >
                   <img
                     src={plusAddFriend}
@@ -219,7 +344,9 @@ const Profile = () => {
                   icon={faCakeCandles}
                   className="text-gray-600"
                 />
-                <span>{profileUser?.dob || "Not specified"}</span>
+                <span className="text-gray-800">
+                  {formatDate(userInfo?.dob)}
+                </span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -227,23 +354,17 @@ const Profile = () => {
                   icon={faLocationDot}
                   className="text-gray-600"
                 />
-                <span>{profileUser?.address || "Not specified"}</span>
+                <span className="text-gray-800">
+                  {userInfo?.address || "Not specified"}
+                </span>
               </div>
 
               <div className="flex items-center gap-2">
                 <FontAwesomeIcon icon={faBriefcase} className="text-gray-600" />
-                <span>{profileUser?.occupation || "Not specified"}</span>
+                <span className="text-gray-800">
+                  {userInfo?.occupation || "Not specified"}
+                </span>
               </div>
-
-              {/* {userData.relationshipStatus && (
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon
-                    icon={getRelationshipIcon(userData.relationshipStatus)}
-                    className="text-gray-600"
-                  />
-                  <span>{userData.relationshipStatus}</span>
-                </div>
-              )} */}
             </div>
           </div>
         </div>
@@ -255,7 +376,7 @@ const Profile = () => {
         </div>
         <h2 className="text-2xl font-semibold ml-10 mb-4 px-4">Posts</h2>
         <div className="flex flex-col gap-5">
-          {postsLoading ? (
+          {loadingPosts ? (
             <div className="text-center text-gray-500 py-10">
               <div className="animate-pulse">Đang tải bài viết...</div>
             </div>

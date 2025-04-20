@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router } from "express";
 import {
   getUser,
   updateUser,
@@ -8,29 +8,32 @@ import {
   acceptFriendRequest,
   rejectFriendRequest,
   unfriendUser,
-  blockUser,
-  unblockUser,
 } from "../controllers/user.controller";
 
 const router = Router();
 
-// Routes
-router.get("/", async (req: Request, res: Response) => {
-  res.send("<h1>Welcome to User API</h1>");
-});
-
+// Get user by id
 router.get("/:id", getUser);
+
+// Update user
 router.put("/:id", updateUser);
+
+// Delete user
 router.delete("/:id", deleteUser);
 
+// Send friend request
 router.post("/:id/friend-request", sendFriendRequest);
+
+// Cancel friend request
 router.delete("/:id/friend-request", cancelFriendRequest);
+
+// Accept friend request
 router.post("/:id/accept", acceptFriendRequest);
+
+// Reject friend request
 router.post("/:id/reject", rejectFriendRequest);
+
+// Unfriend user
 router.delete("/:id/unfriend", unfriendUser);
 
-// Block routes
-router.post("/:id/block", blockUser);
-router.post("/:id/unblock", unblockUser);
-router.delete("/:id/unfriend", unfriendUser);
 export default router;

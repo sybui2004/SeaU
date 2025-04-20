@@ -8,6 +8,7 @@ export const profileController = {
   // get a User
   getUser: async (req: Request, res: Response) => {
     const id = req.params.id;
+    const { currentUserAdminStatus } = req.body;
 
     try {
       const user = await User.findById(id).lean();
@@ -16,7 +17,11 @@ export const profileController = {
         return;
       }
       const { password, ...otherDetails } = user;
-      responseUtils.success(res, otherDetails);
+      if (currentUserAdminStatus) {
+        responseUtils.success(res, user);
+      } else {
+        responseUtils.success(res, otherDetails);
+      }
     } catch (error) {
       responseUtils.error(res, "Get user failed. Please try again.");
     }
@@ -26,7 +31,7 @@ export const profileController = {
   updateUser: async (req: Request, res: Response) => {
     const id = req.params.id;
     const { _id, currentUserAdminStatus, password } = req.body;
-    if (id === _id) {
+    if (id === _id || currentUserAdminStatus) {
       try {
         if (password) {
           const salt = await bcrypt.genSalt(10);

@@ -39,26 +39,74 @@ export const updateUser = (id: string, formData: any) => {
 //   };
 // };
 
-// Action theo dõi/kết bạn với người dùng
-// export const followUser = (followUserId: string, currentUserId: string) => {
-//   return async (dispatch: any) => {
-//     try {
-//       await UserApi.followUser(followUserId, currentUserId);
-//       dispatch({ type: "FOLLOW_USER", data: followUserId });
-//     } catch (error) {
-//       console.error("Error following user:", error);
-//     }
-//   };
-// };
+//Action gửi lời mời kết bạn với người dùng
+export const sendFriendRequest = (
+  receiverUserId: string,
+  currentUserId: string
+) => {
+  return async (dispatch: any) => {
+    try {
+      await UserApi.sendFriendRequest(receiverUserId, currentUserId);
+      dispatch({ type: "SEND_FRIEND_REQUEST", data: receiverUserId });
+    } catch (error) {
+      console.error("Error sending friend request:", error);
+    }
+  };
+};
 
-// // Action hủy theo dõi/hủy kết bạn
-// export const unfollowUser = (unfollowUserId: string, currentUserId: string) => {
-//   return async (dispatch: any) => {
-//     try {
-//       await UserApi.unfollowUser(unfollowUserId, currentUserId);
-//       dispatch({ type: "UNFOLLOW_USER", data: unfollowUserId });
-//     } catch (error) {
-//       console.error("Error unfollowing user:", error);
-//     }
-//   };
-// };
+//Action hủy lời mời kết bạn với người dùng
+export const cancelFriendRequest = (
+  receiverUserId: string,
+  currentUserId: string
+) => {
+  return async (dispatch: any) => {
+    try {
+      await UserApi.cancelFriendRequest(receiverUserId, currentUserId);
+      dispatch({ type: "CANCEL_FRIEND_REQUEST", data: receiverUserId });
+    } catch (error) {
+      console.error("Error canceling friend request:", error);
+    }
+  };
+};
+
+//Action chấp nhận lời mời kết bạn với người dùng
+export const acceptFriendRequest = (
+  receiverUserId: string,
+  currentUserId: string
+) => {
+  return async (dispatch: any) => {
+    try {
+      await UserApi.acceptFriendRequest(receiverUserId, currentUserId);
+      dispatch({ type: "ACCEPT_FRIEND_REQUEST", data: receiverUserId });
+    } catch (error) {
+      console.error("Error accepting friend request:", error);
+    }
+  };
+};
+
+//Action từ chối lời mời kết bạn với người dùng
+export const rejectFriendRequest = (
+  receiverUserId: string,
+  currentUserId: string
+) => {
+  return async (dispatch: any) => {
+    try {
+      await UserApi.rejectFriendRequest(receiverUserId, currentUserId);
+      dispatch({ type: "REJECT_FRIEND_REQUEST", data: receiverUserId });
+    } catch (error) {
+      console.error("Error rejecting friend request:", error);
+    }
+  };
+};
+
+//Action hủy kết bạn với người dùng
+export const unfriendUser = (receiverUserId: string, currentUserId: string) => {
+  return async (dispatch: any) => {
+    try {
+      await UserApi.unfriendUser(receiverUserId, currentUserId);
+      dispatch({ type: "UNFRIEND_USER", data: receiverUserId });
+    } catch (error) {
+      console.error("Error unfriending user:", error);
+    }
+  };
+};

@@ -25,29 +25,18 @@ interface UserProfileAction {
 //   data?: any[];
 // }
 
-// interface FollowAction {
-//   type: "FOLLOW_USER";
-//   currentUserId?: string;
-//   data?: string;
-// }
-
-// interface UnfollowAction {
-//   type: "UNFOLLOW_USER";
-//   currentUserId?: string;
-//   data?: string;
-// }
-
-interface UpdateUserAction {
-  type: "UPDATE_USER_START" | "UPDATE_USER_SUCCESS" | "UPDATE_USER_FAIL";
-  data?: UserProfile;
+interface FriendAction {
+  type:
+    | "SEND_FRIEND_REQUEST"
+    | "CANCEL_FRIEND_REQUEST"
+    | "ACCEPT_FRIEND_REQUEST"
+    | "REJECT_FRIEND_REQUEST"
+    | "UNFRIEND_USER";
+  data?: string;
+  currentUserId?: string;
 }
 
-type UserAction =
-  | UserProfileAction
-  //   | UserFriendsAction
-  // | FollowAction
-  // | UnfollowAction
-  | UpdateUserAction;
+type UserAction = UserProfileAction | FriendAction;
 
 const initialState: UserState = {
   userProfiles: {}, // Lưu trữ thông tin người dùng theo ID
@@ -84,96 +73,15 @@ const UserReducer = (
     case "USER_PROFILE_FAIL":
       return { ...state, loading: false, error: true };
 
-    // // Xử lý lấy danh sách bạn bè
-    // case "USER_FRIENDS_LOADING":
-    //   return { ...state, loading: true, error: false };
-
-    // case "USER_FRIENDS_SUCCESS": {
-    //   if (!action.userId) {
-    //     return state;
-    //   }
-
-    //   return {
-    //     ...state,
-    //     userFriends: {
-    //       ...state.userFriends,
-    //       [action.userId]: action.data || [],
-    //     },
-    //     loading: false,
-    //     error: false,
-    //   };
-    // }
-
-    // case "USER_FRIENDS_FAIL":
-    //   return { ...state, loading: false, error: true };
-
-    // Xử lý khi follow/unfollow người dùng
-    // case "FOLLOW_USER": {
-    //   if (!action.currentUserId || !action.data) {
-    //     return state;
-    //   }
-
-    //   const currentUser = state.userProfiles[action.currentUserId];
-    //   if (!currentUser) {
-    //     return state;
-    //   }
-
-    //   return {
-    //     ...state,
-    //     userProfiles: {
-    //       ...state.userProfiles,
-    //       [action.currentUserId]: {
-    //         ...currentUser,
-    //         friends: [...currentUser.friends, action.data],
-    //       },
-    //     },
-    //   };
-    // }
-
-    // case "UNFOLLOW_USER": {
-    //   if (!action.currentUserId || !action.data) {
-    //     return state;
-    //   }
-
-    //   const currentUser = state.userProfiles[action.currentUserId];
-    //   if (!currentUser) {
-    //     return state;
-    //   }
-
-    //   return {
-    //     ...state,
-    //     userProfiles: {
-    //       ...state.userProfiles,
-    //       [action.currentUserId]: {
-    //         ...currentUser,
-    //         friends: currentUser.friends.filter((id) => id !== action.data),
-    //       },
-    //     },
-    //   };
-    // }
-
-    // Xử lý cập nhật thông tin người dùng
-    case "UPDATE_USER_START":
-      return { ...state, loading: true, error: false };
-
-    case "UPDATE_USER_SUCCESS": {
-      if (!action.data || !action.data._id) {
-        return state;
-      }
-
-      return {
-        ...state,
-        userProfiles: {
-          ...state.userProfiles,
-          [action.data._id]: action.data,
-        },
-        loading: false,
-        error: false,
-      };
-    }
-
-    case "UPDATE_USER_FAIL":
-      return { ...state, loading: false, error: true };
+    // Xử lý các actions về friend requests
+    case "SEND_FRIEND_REQUEST":
+    case "CANCEL_FRIEND_REQUEST":
+    case "ACCEPT_FRIEND_REQUEST":
+    case "REJECT_FRIEND_REQUEST":
+    case "UNFRIEND_USER":
+      // Chỉ log action mà không thay đổi state, vì chúng ta sử dụng API trực tiếp để lấy dữ liệu
+      console.log(`Friend action: ${action.type}`, action.data);
+      return state;
 
     default:
       return state;
