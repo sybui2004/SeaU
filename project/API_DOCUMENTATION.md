@@ -251,8 +251,40 @@
 
 - **URL**: `/comment/:postId`
 - **Method**: `GET`
-- **Description**: Get all comments for a specific post.
-- **Response**: List of comments.
+- **Description**: Get all comments for a specific post with pagination.
+- **Query Parameters**:
+  - `page`: Page number
+  - `limit`: Number of items per page
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Comments fetched successfully",
+    "data": {
+      "comments": [
+        {
+          "postId": "string",
+          "userId": {
+            "fullname": "string",
+            "profilePic": "string"
+          },
+          "content": "string",
+          "likes": ["string"],
+          "parentId": null,
+          "createdAt": "date",
+          "updatedAt": "date"
+        }
+      ],
+      "pagination": {
+        "currentPage": 1,
+        "totalPages": 5,
+        "totalItems": 45,
+        "hasNextPage": true,
+        "hasPrevPage": false
+      }
+    }
+  }
+  ```
 
 ### Create Comment
 
@@ -313,8 +345,40 @@
 
 - **URL**: `/comment/:commentId/replies`
 - **Method**: `GET`
-- **Description**: Get all replies to a specific comment.
-- **Response**: List of reply comments.
+- **Description**: Get all replies to a specific comment with pagination.
+- **Query Parameters**:
+  - `page`: Page number
+  - `limit`: Number of items per page
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Replies fetched successfully",
+    "data": {
+      "replies": [
+        {
+          "postId": "string",
+          "userId": {
+            "fullname": "string",
+            "profilePic": "string"
+          },
+          "content": "string",
+          "likes": ["string"],
+          "parentId": "string",
+          "createdAt": "date",
+          "updatedAt": "date"
+        }
+      ],
+      "pagination": {
+        "currentPage": 1,
+        "totalPages": 5,
+        "totalItems": 45,
+        "hasNextPage": true,
+        "hasPrevPage": false
+      }
+    }
+  }
+  ```
 
 ### Create Reply
 

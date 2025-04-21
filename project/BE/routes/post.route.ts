@@ -1,4 +1,4 @@
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import {
   createPost,
   getPost,
@@ -6,6 +6,7 @@ import {
   deletePost,
   likePost,
   getTimelinePost,
+  getUserPosts,
 } from "../controllers/post.controller";
 const router = express.Router();
 
@@ -25,6 +26,16 @@ router.delete("/:id", deletePost);
 router.put("/:id/like", likePost);
 
 // Get timeline posts
-router.get("/:id/timeline", getTimelinePost);
+router.get(
+  "/:id/timeline",
+  (req: Request, res: Response, next: NextFunction) => {
+    getTimelinePost(req, res).catch(next);
+  }
+);
+
+// Get user posts
+router.get("/user/:id", (req: Request, res: Response, next: NextFunction) => {
+  getUserPosts(req, res).catch(next);
+});
 
 export default router;

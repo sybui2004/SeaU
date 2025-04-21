@@ -7,14 +7,35 @@ import { responseUtils } from "../utils/response.utils";
 export const getCommentsByPostId = async (req: Request, res: Response) => {
   try {
     const postId = req.params.postId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalComments = await Comment.countDocuments({
+      postId,
+      parentId: null,
+    });
+    const totalPages = Math.ceil(totalComments / limit);
+
     const comments = await Comment.find({ postId, parentId: null })
       .populate("userId", "fullname profilePic")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     return responseUtils.success(res, {
       success: true,
       message: "Comments fetched successfully",
-      data: comments,
+      data: {
+        comments,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalComments,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      },
     });
   } catch (error) {
     console.error("Error retrieving comments:", error);
@@ -187,14 +208,32 @@ export const likeComment = async (req: Request, res: Response) => {
 export const getRepliesByCommentId = async (req: Request, res: Response) => {
   try {
     const commentId = req.params.commentId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalReplies = await Comment.countDocuments({ parentId: commentId });
+    const totalPages = Math.ceil(totalReplies / limit);
+
     const replies = await Comment.find({ parentId: commentId })
       .populate("userId", "fullname profilePic")
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: 1 })
+      .skip(skip)
+      .limit(limit);
 
     return responseUtils.success(res, {
       success: true,
       message: "Replies fetched successfully",
-      data: replies,
+      data: {
+        replies,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalReplies,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      },
     });
   } catch (error) {
     console.error("Error retrieving replies:", error);

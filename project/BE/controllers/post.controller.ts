@@ -95,11 +95,49 @@ export const likePost = async (req: Request, res: Response) => {
   }
 };
 
+// Get all posts of a user
+export const getUserPosts = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalPosts = await Post.countDocuments({ userId: userId });
+
+    const userPosts = await Post.find({ userId: userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    return responseUtils.success(res, {
+      posts: userPosts,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalPosts,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error retrieving user posts:", error);
+    return responseUtils.error(res, "Error retrieving user posts", 500);
+  }
+};
+
 // Get Timeline Post
 export const getTimelinePost = async (req: Request, res: Response) => {
-  const userId = req.params.id;
   try {
+    const userId = req.params.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
     const currentUserPosts = await Post.find({ userId: userId });
+
     const friendPost = await User.aggregate([
       {
         $match: { _id: new mongoose.Types.ObjectId(userId) },
@@ -131,15 +169,31 @@ export const getTimelinePost = async (req: Request, res: Response) => {
       },
     ]);
 
-    res
-      .status(200)
-      .json(
-        [...currentUserPosts, ...(friendPost[0]?.friendPost || [])].sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )
-      );
+    const allPosts = [
+      ...currentUserPosts,
+      ...(friendPost[0]?.friendPost || []),
+    ].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    const totalPosts = allPosts.length;
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    const paginatedPosts = allPosts.slice(skip, skip + limit);
+
+    return responseUtils.success(res, {
+      posts: paginatedPosts,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalPosts,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
   } catch (error) {
-    responseUtils.error;
+    console.error("Error retrieving timeline posts:", error);
+    return responseUtils.error(res, "Error retrieving timeline posts", 500);
   }
 };

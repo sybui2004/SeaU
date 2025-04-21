@@ -1,5 +1,11 @@
 const postReducer = (
-  state = { posts: [], loading: false, error: false, uploading: false },
+  state = {
+    posts: [],
+    pagination: null,
+    loading: false,
+    error: false,
+    uploading: false,
+  },
   action: any
 ) => {
   switch (action.type) {
@@ -8,7 +14,10 @@ const postReducer = (
     case "UPLOAD_SUCCESS":
       return {
         ...state,
-        posts: [action.data, ...state.posts],
+        posts: [
+          action.data,
+          ...(Array.isArray(state.posts) ? state.posts : []),
+        ],
         uploading: false,
         error: false,
       };
@@ -17,7 +26,30 @@ const postReducer = (
     case "RETREIVING_START":
       return { ...state, loading: true, error: false };
     case "RETREIVING_SUCCESS":
-      return { ...state, posts: action.data, loading: false, error: false };
+      return {
+        ...state,
+        posts: action.data.posts || action.data,
+        pagination: action.data.pagination || null,
+        loading: false,
+        error: false,
+      };
+    case "RETREIVING_MORE_START":
+      return { ...state, loading: true, error: false };
+    case "RETREIVING_MORE_SUCCESS":
+      return {
+        ...state,
+        posts: [
+          ...(Array.isArray(state.posts) ? state.posts : []),
+          ...(Array.isArray(action.data.posts)
+            ? action.data.posts
+            : action.data.posts
+            ? action.data.posts
+            : []),
+        ],
+        pagination: action.data.pagination || null,
+        loading: false,
+        error: false,
+      };
     case "RETREIVING_FAIL":
       return { ...state, loading: false, error: true };
     default:

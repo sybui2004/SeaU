@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Post from "./Post";
@@ -73,9 +73,18 @@ const Profile = () => {
     sentFriendRequests: [],
   });
 
-  // State để lưu bài đăng của người dùng
+  // State để lưu bài đăng của người dùng với phân trang
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(5);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalPosts, setTotalPosts] = useState(0);
+  const [pagination, setPagination] = useState<any>(null);
+
+  // Ref cho infinite scroll
+  const observerRef = useRef<HTMLDivElement | null>(null);
+  const postsContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Lấy thông tin người dùng từ API
   useEffect(() => {
@@ -85,7 +94,6 @@ const Profile = () => {
           `http://localhost:3000/user/${profileUserId}`
         );
         if (response.data) {
-          console.log("API response data:", response.data);
           setUserInfo({
             id: profileUserId,
             fullname: response.data.fullname || "Người dùng",
@@ -106,37 +114,127 @@ const Profile = () => {
     fetchUserInfo();
   }, [profileUserId]);
 
-  // Lấy bài đăng của người dùng từ API
+  // Lấy tổng số bài đăng của người dùng
   useEffect(() => {
-    const fetchUserPosts = async () => {
+    const fetchPostCount = async () => {
+      if (!profileUserId) return;
+
+      try {
+        // Gọi API để lấy số lượng bài đăng (có thể phía backend chưa hỗ trợ)
+        // Nếu không có endpoint đếm, gọi API lấy 1 bài đăng và đọc thông tin phân trang
+        const response = await axios.get(
+          `http://localhost:3000/post/user/${profileUserId}?page=1&limit=1`
+        );
+
+        if (response.data && response.data.pagination) {
+          setTotalPosts(response.data.pagination.totalItems);
+        }
+      } catch (err) {
+        console.error("Error fetching post count:", err);
+      }
+    };
+
+    fetchPostCount();
+  }, [profileUserId]);
+
+  // Lấy bài đăng của người dùng với phân trang
+  const fetchUserPosts = useCallback(
+    async (pageNum: number, append = false) => {
       if (!profileUserId) return;
 
       setLoadingPosts(true);
       try {
+        // Sử dụng API endpoint mới để lấy bài đăng của người dùng với phân trang
         const response = await axios.get(
-          `http://localhost:3000/post/${profileUserId}/timeline`
+          `http://localhost:3000/post/user/${profileUserId}?page=${pageNum}&limit=${limit}`
         );
 
         if (response.data) {
           console.log("User posts response:", response.data);
-          const filteredPosts = response.data.filter(
-            (post: any) => post.userId === profileUserId
-          );
 
-          setUserPosts(filteredPosts);
+          // Xử lý dữ liệu trả về từ API
+          if (response.data.posts && response.data.pagination) {
+            // Cập nhật thông tin phân trang
+            setPagination(response.data.pagination);
+            setTotalPosts(response.data.pagination.totalItems);
+            setHasMore(pageNum < response.data.pagination.totalPages);
+
+            // Cập nhật danh sách bài đăng
+            if (append) {
+              setUserPosts((prev) => [...prev, ...response.data.posts]);
+            } else {
+              setUserPosts(response.data.posts);
+            }
+          } else {
+            // Trường hợp API trả về mảng bài đăng không có phân trang
+            const posts = Array.isArray(response.data) ? response.data : [];
+            setTotalPosts(posts.length);
+            setHasMore(false);
+            setUserPosts(posts);
+          }
         } else {
-          setUserPosts([]);
+          // Không có dữ liệu
+          if (!append) {
+            setUserPosts([]);
+          }
+          setHasMore(false);
         }
       } catch (err) {
         console.error("Error fetching user posts:", err);
-        setUserPosts([]);
+        if (!append) {
+          setUserPosts([]);
+        }
+        setHasMore(false);
       } finally {
         setLoadingPosts(false);
       }
-    };
+    },
+    [profileUserId, limit]
+  );
 
-    fetchUserPosts();
-  }, [profileUserId]);
+  // Tải bài đăng lần đầu khi profileUserId thay đổi
+  useEffect(() => {
+    setPage(1);
+    setUserPosts([]);
+    fetchUserPosts(1, false);
+  }, [profileUserId, fetchUserPosts]);
+
+  // Hàm tải thêm bài đăng
+  const loadMore = useCallback(() => {
+    if (loadingPosts || !hasMore) return;
+
+    const nextPage = page + 1;
+    fetchUserPosts(nextPage, true);
+    setPage(nextPage);
+  }, [page, loadingPosts, hasMore, fetchUserPosts]);
+
+  // Thiết lập Intersection Observer để tự động tải thêm bài đăng khi cuộn xuống
+  useEffect(() => {
+    if (!hasMore || loadingPosts) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "200px",
+      }
+    );
+
+    const currentObserverRef = observerRef.current;
+    if (currentObserverRef) {
+      observer.observe(currentObserverRef);
+    }
+
+    return () => {
+      if (currentObserverRef) {
+        observer.unobserve(currentObserverRef);
+      }
+    };
+  }, [observerRef, loadMore, hasMore, loadingPosts]);
 
   const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
 
@@ -222,7 +320,7 @@ const Profile = () => {
 
   return (
     <div className="flex w-full">
-      {/* Fixed width sidebar container */}
+      {/* Profile info card - left sidebar */}
       <div className="w-[350px] flex-shrink-0 relative">
         <div className="fixed w-[350px] ml-5">
           <div className="w-full h-32 bg-gradient-to-r from-[#1CA7EC] to-[#4ADEDE] rounded-t-lg relative">
@@ -244,10 +342,9 @@ const Profile = () => {
           <div className="bg-white rounded-b-lg pt-16 pb-4 px-4 text-center shadow-sm">
             <h2 className="text-2xl font-bold mt-2">{userInfo?.fullname}</h2>
 
-            <div className="flex justify-center gap-10 text-4 text-gray-500 mt-1">
+            <div className="flex justify-center gap-10 text-sm text-gray-500 mt-1">
               <span>{userInfo?.friends?.length || 0} friends</span>
-              {/* <span>{userData.mutuals} mutuals</span> */}
-              <span>{userPosts.length} posts</span>
+              <span>{totalPosts} posts</span>
             </div>
 
             <div className="flex justify-center mt-3">
@@ -255,6 +352,7 @@ const Profile = () => {
                 <Button
                   variant="gradientCustom"
                   onClick={() => navigate(`/edit-profile/${currentUser._id}`)}
+                  className="px-4 py-2 text-sm"
                 >
                   Edit Profile
                 </Button>
@@ -338,13 +436,13 @@ const Profile = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 gap-4 p-4 bg-gray-50 rounded-lg mt-4">
               <div className="flex items-center gap-2">
                 <FontAwesomeIcon
                   icon={faCakeCandles}
-                  className="text-gray-600"
+                  className="text-gray-600 w-4 h-4"
                 />
-                <span className="text-gray-800">
+                <span className="text-gray-800 text-sm">
                   {formatDate(userInfo?.dob)}
                 </span>
               </div>
@@ -352,16 +450,19 @@ const Profile = () => {
               <div className="flex items-center gap-2">
                 <FontAwesomeIcon
                   icon={faLocationDot}
-                  className="text-gray-600"
+                  className="text-gray-600 w-4 h-4"
                 />
-                <span className="text-gray-800">
+                <span className="text-gray-800 text-sm">
                   {userInfo?.address || "Not specified"}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <FontAwesomeIcon icon={faBriefcase} className="text-gray-600" />
-                <span className="text-gray-800">
+                <FontAwesomeIcon
+                  icon={faBriefcase}
+                  className="text-gray-600 w-4 h-4"
+                />
+                <span className="text-gray-800 text-sm">
                   {userInfo?.occupation || "Not specified"}
                 </span>
               </div>
@@ -370,18 +471,33 @@ const Profile = () => {
         </div>
       </div>
 
-      <div className="mt-6 flex-1 pr-2">
+      {/* Posts section - right content */}
+      <div className="mt-6 flex-1 pr-2" ref={postsContainerRef}>
         <div className="ml-10 mb-4 flex justify-center">
           {profileUserId === currentUser?._id && <PostShare />}
         </div>
-        <h2 className="text-2xl font-semibold ml-10 mb-4 px-4">Posts</h2>
-        <div className="flex flex-col gap-5">
-          {loadingPosts ? (
+        <h2 className="text-xl font-semibold ml-10 mb-4 px-4">Posts</h2>
+        <div className="flex flex-col gap-5 ml-10">
+          {loadingPosts && userPosts.length === 0 ? (
             <div className="text-center text-gray-500 py-10">
               <div className="animate-pulse">Đang tải bài viết...</div>
             </div>
           ) : userPosts.length > 0 ? (
-            userPosts.map((post: any) => <Post key={post._id} data={post} />)
+            <>
+              {userPosts.map((post: any, index) => (
+                <Post key={post._id || index} data={post} />
+              ))}
+
+              {/* Observer element for infinite scroll */}
+              <div
+                ref={observerRef}
+                className="h-14 flex justify-center items-center"
+              >
+                {loadingPosts && (
+                  <div className="animate-spin h-5 w-5 border-2 border-primary rounded-full border-t-transparent"></div>
+                )}
+              </div>
+            </>
           ) : (
             <div className="text-center text-gray-500 py-10">
               Chưa có bài viết nào

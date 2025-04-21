@@ -8,6 +8,14 @@ import { responseUtils } from "../utils/response.utils";
 export const getConversations = async (req: Request, res: Response) => {
   try {
     const userId = req.params.userId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalConversations = await Conversation.countDocuments({
+      members: { $in: [userId] },
+    });
+    const totalPages = Math.ceil(totalConversations / limit);
 
     const conversations = await Conversation.find({
       members: { $in: [userId] },
@@ -21,9 +29,20 @@ export const getConversations = async (req: Request, res: Response) => {
           select: "fullname profilePic",
         },
       })
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    return responseUtils.success(res, conversations);
+    return responseUtils.success(res, {
+      conversations,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalConversations,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
   } catch (error) {
     console.error("Error retrieving conversations:", error);
     return responseUtils.error(res, "Error retrieving conversations", 500);

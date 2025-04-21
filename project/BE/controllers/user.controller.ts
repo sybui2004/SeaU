@@ -10,3 +10,7 @@ export const cancelFriendRequest = friendController.cancelFriendRequest;
 export const acceptFriendRequest = friendController.acceptFriendRequest;
 export const rejectFriendRequest = friendController.rejectFriendRequest;
 export const unfriendUser = friendController.unfriendUser;
+export const getFriendsList = friendController.getFriendsList;
+export const getReceivedFriendRequests =
+  friendController.getReceivedFriendRequests;
+export const getSentFriendRequests = friendController.getSentFriendRequests;

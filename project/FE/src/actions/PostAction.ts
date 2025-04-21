@@ -1,11 +1,21 @@
 import * as PostApi from "../api/PostRequest";
 
-export const getTimelinePost = (id: string) => {
+export const getTimelinePost = (
+  id: string,
+  page: number,
+  limit: number,
+  isLoadMore = false
+) => {
   return async (dispatch: any) => {
-    dispatch({ type: "RETREIVING_START" });
+    dispatch({
+      type: isLoadMore ? "RETREIVING_MORE_START" : "RETREIVING_START",
+    });
     try {
-      const { data } = await PostApi.getTimelinePost(id);
-      dispatch({ type: "RETREIVING_SUCCESS", data: data });
+      const { data } = await PostApi.getTimelinePost(id, page, limit);
+      dispatch({
+        type: isLoadMore ? "RETREIVING_MORE_SUCCESS" : "RETREIVING_SUCCESS",
+        data: data,
+      });
     } catch (error) {
       dispatch({ type: "RETREIVING_FAIL" });
       console.log(error);

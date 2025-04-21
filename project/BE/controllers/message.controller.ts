@@ -8,13 +8,20 @@ import { responseUtils } from "../utils/response.utils";
 export const getMessages = async (req: Request, res: Response) => {
   try {
     const conversationId = req.params.conversationId;
-    const { page = 1, limit = 20 } = req.query;
+    const page = parseInt(req.query.page as string);
+    const limit = parseInt(req.query.limit as string);
+    const skip = (page - 1) * limit;
 
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
       return responseUtils.error(res, "Conversation not found", 404);
     }
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+    const totalMessages = await Message.countDocuments({
+      conversationId,
+      isDeleted: false,
+    });
+    const totalPages = Math.ceil(totalMessages / limit);
 
     const messages = await Message.find({
       conversationId,
@@ -22,19 +29,18 @@ export const getMessages = async (req: Request, res: Response) => {
     })
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit as string))
+      .limit(limit)
       .populate("senderId", "fullname profilePic");
-
-    const totalMessages = await Message.countDocuments({
-      conversationId,
-      isDeleted: false,
-    });
 
     return responseUtils.success(res, {
       messages: messages.reverse(),
-      totalPages: Math.ceil(totalMessages / parseInt(limit as string)),
-      currentPage: parseInt(page as string),
-      totalMessages,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalMessages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
   } catch (error) {
     console.error("Error retrieving messages:", error);

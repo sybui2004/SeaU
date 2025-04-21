@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import {
   getUser,
   updateUser,
@@ -8,6 +8,9 @@ import {
   acceptFriendRequest,
   rejectFriendRequest,
   unfriendUser,
+  getFriendsList,
+  getReceivedFriendRequests,
+  getSentFriendRequests,
 } from "../controllers/user.controller";
 
 const router = Router();
@@ -35,5 +38,29 @@ router.post("/:id/reject", rejectFriendRequest);
 
 // Unfriend user
 router.delete("/:id/unfriend", unfriendUser);
+
+// Get friends list
+router.get(
+  "/:id/friends",
+  (req: Request, res: Response, next: NextFunction) => {
+    getFriendsList(req, res).catch(next);
+  }
+);
+
+// Get received friend requests
+router.get(
+  "/:id/friend-requests/received",
+  (req: Request, res: Response, next: NextFunction) => {
+    getReceivedFriendRequests(req, res).catch(next);
+  }
+);
+
+// Get sent friend requests
+router.get(
+  "/:id/friend-requests/sent",
+  (req: Request, res: Response, next: NextFunction) => {
+    getSentFriendRequests(req, res).catch(next);
+  }
+);
 
 export default router;
