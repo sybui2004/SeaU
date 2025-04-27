@@ -109,7 +109,7 @@ const Post = ({ data }: any) => {
   };
   const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
   return (
-    <div className="flex flex-col pt-3 pb-2 bg-gray-50 border-1 border-[#DCDCDC] rounded-2xl shadow-lg m-auto hover:shadow-xl transition-shadow duration-300 max-w-[90%] w-full overflow-hidden">
+    <div className="flex flex-col pt-3 pb-2 mb-2 bg-gray-50 border-1 border-[#DCDCDC] rounded-2xl shadow-lg m-auto hover:shadow-xl transition-shadow duration-300 max-w-[90%] w-full overflow-hidden">
       {/* Log dữ liệu đã được thực hiện trước khi render */}
       <div className="flex flex-col ml-7 max-w-full max-md:ml-2.5">
         <div className="flex gap-5 items-center w-full font-bold">

@@ -43,6 +43,28 @@ export const getCommentsByPostId = async (req: Request, res: Response) => {
   }
 };
 
+// Get a comment by id
+export const getCommentById = async (req: Request, res: Response) => {
+  try {
+    const commentId = req.params.commentId;
+
+    const comment = await Comment.findById(commentId);
+
+    if (!comment) {
+      return responseUtils.error(res, "Comment not found", 404);
+    }
+
+    return responseUtils.success(res, {
+      success: true,
+      message: "Comment fetched successfully",
+      data: comment,
+    });
+  } catch (error) {
+    console.error("Error fetching comment:", error);
+    return responseUtils.error(res, "Error fetching comment", 500);
+  }
+};
+
 // Create a comment
 export const createComment = async (req: Request, res: Response) => {
   try {

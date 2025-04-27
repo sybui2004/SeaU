@@ -25,26 +25,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   className,
 }) => {
+  const isSentByMe = message.sender === "You";
+
   return (
     <div
       className={`max-w-xs px-4 py-2 rounded-lg break-words whitespace-pre-wrap ${
-        message.sender === "You"
-          ? "bg-blue-500 text-white"
-          : "bg-gray-100 text-black"
+        isSentByMe ? "bg-blue-500 text-white" : "bg-gray-100 text-black"
       } ${className}`}
     >
       {message.isFile ? (
         <div className="flex items-center space-x-1">
           <img
-            src={message.sender === "You" ? fileIconU : fileIcon}
-            alt="File"
+            src={isSentByMe ? fileIconU : fileIcon}
+            alt="Tệp"
             className="w-6"
           />
           <div>
             <p className="font-medium ml-2">{message.fileName}</p>
             <p
               className={`text-sm ml-2 ${
-                message.sender === "You" ? " text-white" : " text-black"
+                isSentByMe ? " text-white" : " text-black"
               }`}
             >
               {message.fileSize}
@@ -55,21 +55,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <div className="flex items-center space-x-2">
           <audio controls className="w-70">
             <source src={message.content} type="audio/mp3" />
-            Your browser does not support the audio element.
+            Trình duyệt của bạn không hỗ trợ phát âm thanh.
           </audio>
         </div>
       ) : message.isImage ? (
         <img
           src={message.content}
-          alt="image"
+          alt="Hình ảnh"
           className="w-full h-auto rounded-lg"
         />
       ) : (
         <p>{message.content}</p>
       )}
       <p
-        className={`text-xs  mt-1 text-right ${
-          message.sender === "You" ? " text-white" : " text-gray-400"
+        className={`text-xs mt-1 ${
+          isSentByMe ? "text-right text-white" : "text-left text-gray-400"
         }`}
       >
         {message.timestamp}

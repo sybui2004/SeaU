@@ -2,7 +2,8 @@
   "dependencies": {
     "bcrypt": "^5.1.1",
     "mongodb": "^6.15.0",
-    "mongoose": "^8.13.0"
+    "mongoose": "^8.13.0",
+    "react-input-emoji": "^5.9.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

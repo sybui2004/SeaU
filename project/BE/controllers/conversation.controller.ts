@@ -49,6 +49,25 @@ export const getConversations = async (req: Request, res: Response) => {
   }
 };
 
+// Get a conversation by id
+export const getConversation = async (req: Request, res: Response) => {
+  const conversationId = req.params.conversationId;
+  const conversation = await Conversation.findById(conversationId);
+  return responseUtils.success(res, { conversation });
+};
+// Find a conversation between two users
+export const findConversation = async (req: Request, res: Response) => {
+  try {
+    const conversation = await Conversation.findOne({
+      members: { $all: [req.params.firstId, req.params.secondId] },
+    });
+    return responseUtils.success(res, {
+      conversation,
+    });
+  } catch (error) {
+    return responseUtils.error(res, "Error finding conversation", 500);
+  }
+};
 // Create a new conversation
 export const createConversation = async (req: Request, res: Response) => {
   const { senderId, receiverId } = req.body;

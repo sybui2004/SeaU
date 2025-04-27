@@ -1,6 +1,5 @@
 import Message from "../models/message.model";
 import Conversation from "../models/conversation.model";
-import mongoose from "mongoose";
 import { Request, Response } from "express";
 import { responseUtils } from "../utils/response.utils";
 

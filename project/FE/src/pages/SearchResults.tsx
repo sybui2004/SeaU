@@ -105,7 +105,7 @@ const SearchResults = () => {
           ) : (
             <>
               {activeTab === "posts" && (
-                <div className="space-y-6">
+                <div className="space-y-6 gap-4 mb-2">
                   {posts.length > 0 ? (
                     posts.map((post) => <Post key={post._id} data={post} />)
                   ) : (

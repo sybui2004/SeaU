@@ -13,31 +13,32 @@ import {
   getSentFriendRequests,
 } from "../controllers/user.controller";
 
+import authMiddleWare from "../middleware/auth.middleware";
 const router = Router();
 
 // Get user by id
 router.get("/:id", getUser);
 
 // Update user
-router.put("/:id", updateUser);
+router.put("/:id", authMiddleWare, updateUser);
 
 // Delete user
-router.delete("/:id", deleteUser);
+router.delete("/:id", authMiddleWare, deleteUser);
 
 // Send friend request
-router.post("/:id/friend-request", sendFriendRequest);
+router.post("/:id/friend-request", authMiddleWare, sendFriendRequest);
 
 // Cancel friend request
-router.delete("/:id/friend-request", cancelFriendRequest);
+router.delete("/:id/friend-request", authMiddleWare, cancelFriendRequest);
 
 // Accept friend request
-router.post("/:id/accept", acceptFriendRequest);
+router.post("/:id/accept", authMiddleWare, acceptFriendRequest);
 
 // Reject friend request
-router.post("/:id/reject", rejectFriendRequest);
+router.post("/:id/reject", authMiddleWare, rejectFriendRequest);
 
 // Unfriend user
-router.delete("/:id/unfriend", unfriendUser);
+router.delete("/:id/unfriend", authMiddleWare, unfriendUser);
 
 // Get friends list
 router.get(

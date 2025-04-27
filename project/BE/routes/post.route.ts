@@ -8,22 +8,23 @@ import {
   getTimelinePost,
   getUserPosts,
 } from "../controllers/post.controller";
+import authMiddleWare from "../middleware/auth.middleware";
 const router = express.Router();
 
 // Create a new post
-router.post("/", createPost);
+router.post("/", authMiddleWare, createPost);
 
 // Get a post by id
 router.get("/:id", getPost);
 
 // Update a post
-router.put("/:id", updatePost);
+router.put("/:id", authMiddleWare, updatePost);
 
 // Delete a post
-router.delete("/:id", deletePost);
+router.delete("/:id", authMiddleWare, deletePost);
 
 // Like a post
-router.put("/:id/like", likePost);
+router.put("/:id/like", authMiddleWare, likePost);
 
 // Get timeline posts
 router.get(

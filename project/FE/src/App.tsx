@@ -24,7 +24,7 @@ const ProfileEdit = loadComponent(() => import("./pages/ProfileEdit"));
 const Admin = loadComponent(() => import("./pages/Admin"));
 const Settings = loadComponent(() => import("./pages/Settings"));
 const SearchResults = loadComponent(() => import("./pages/SearchResults"));
-
+const FriendsListPage = loadComponent(() => import("./pages/FriendsList"));
 function App() {
   const user = useSelector((state: any) => state.authReducer.authData);
 
@@ -124,6 +124,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Settings />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/friends/:id"
+            element={
+              <PrivateRoute>
+                <FriendsListPage />
               </PrivateRoute>
             }
           />

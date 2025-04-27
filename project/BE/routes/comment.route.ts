@@ -1,6 +1,7 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import * as commentController from "../controllers/comment.controller";
+import authMiddleWare from "../middleware/auth.middleware";
 
 const router = express.Router();
 
@@ -9,19 +10,36 @@ router.get("/:postId", (req: Request, res: Response, next: NextFunction) => {
   commentController.getCommentsByPostId(req, res).catch(next);
 });
 
+// Get a comment by id
+router.get(
+  "/get/:commentId",
+  (req: Request, res: Response, next: NextFunction) => {
+    commentController.getCommentById(req, res).catch(next);
+  }
+);
+
 // Create new comment
-router.post("/", (req: Request, res: Response, next: NextFunction) => {
-  commentController.createComment(req, res).catch(next);
-});
+router.post(
+  "/",
+  authMiddleWare,
+  (req: Request, res: Response, next: NextFunction) => {
+    commentController.createComment(req, res).catch(next);
+  }
+);
 
 // Update comment
-router.put("/:commentId", (req: Request, res: Response, next: NextFunction) => {
-  commentController.updateComment(req, res).catch(next);
-});
+router.put(
+  "/:commentId",
+  authMiddleWare,
+  (req: Request, res: Response, next: NextFunction) => {
+    commentController.updateComment(req, res).catch(next);
+  }
+);
 
 // Delete comment
 router.delete(
   "/:commentId",
+  authMiddleWare,
   (req: Request, res: Response, next: NextFunction) => {
     commentController.deleteComment(req, res).catch(next);
   }
@@ -30,6 +48,7 @@ router.delete(
 // Like/unlike comment
 router.put(
   "/:commentId/like",
+  authMiddleWare,
   (req: Request, res: Response, next: NextFunction) => {
     commentController.likeComment(req, res).catch(next);
   }
@@ -46,6 +65,7 @@ router.get(
 // Create reply for comment
 router.post(
   "/:commentId/reply",
+  authMiddleWare,
   (req: Request, res: Response, next: NextFunction) => {
     commentController.createReply(req, res).catch(next);
   }

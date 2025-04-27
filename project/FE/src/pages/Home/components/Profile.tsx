@@ -60,7 +60,6 @@ const Profile = () => {
     (state: any) => state.authReducer.authData
   );
 
-  // State cho thông tin người dùng
   const [userInfo, setUserInfo] = useState<any>({
     id: profileUserId,
     fullname: null,
@@ -73,20 +72,19 @@ const Profile = () => {
     sentFriendRequests: [],
   });
 
-  // State để lưu bài đăng của người dùng với phân trang
+  // Thêm state cho số lượng bạn chung
+  const [mutualFriends, setMutualFriends] = useState(0);
+
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [page, setPage] = useState(1);
   const [limit] = useState(5);
   const [hasMore, setHasMore] = useState(true);
   const [totalPosts, setTotalPosts] = useState(0);
-  const [pagination, setPagination] = useState<any>(null);
 
-  // Ref cho infinite scroll
   const observerRef = useRef<HTMLDivElement | null>(null);
   const postsContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Lấy thông tin người dùng từ API
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
@@ -114,14 +112,11 @@ const Profile = () => {
     fetchUserInfo();
   }, [profileUserId]);
 
-  // Lấy tổng số bài đăng của người dùng
   useEffect(() => {
     const fetchPostCount = async () => {
       if (!profileUserId) return;
 
       try {
-        // Gọi API để lấy số lượng bài đăng (có thể phía backend chưa hỗ trợ)
-        // Nếu không có endpoint đếm, gọi API lấy 1 bài đăng và đọc thông tin phân trang
         const response = await axios.get(
           `http://localhost:3000/post/user/${profileUserId}?page=1&limit=1`
         );
@@ -137,14 +132,12 @@ const Profile = () => {
     fetchPostCount();
   }, [profileUserId]);
 
-  // Lấy bài đăng của người dùng với phân trang
   const fetchUserPosts = useCallback(
     async (pageNum: number, append = false) => {
       if (!profileUserId) return;
 
       setLoadingPosts(true);
       try {
-        // Sử dụng API endpoint mới để lấy bài đăng của người dùng với phân trang
         const response = await axios.get(
           `http://localhost:3000/post/user/${profileUserId}?page=${pageNum}&limit=${limit}`
         );
@@ -152,28 +145,22 @@ const Profile = () => {
         if (response.data) {
           console.log("User posts response:", response.data);
 
-          // Xử lý dữ liệu trả về từ API
-          if (response.data.posts && response.data.pagination) {
-            // Cập nhật thông tin phân trang
-            setPagination(response.data.pagination);
-            setTotalPosts(response.data.pagination.totalItems);
-            setHasMore(pageNum < response.data.pagination.totalPages);
+          if (response.data.posts) {
+            setTotalPosts(response.data.posts.length);
+            setHasMore(pageNum < response.data.posts.length);
 
-            // Cập nhật danh sách bài đăng
             if (append) {
               setUserPosts((prev) => [...prev, ...response.data.posts]);
             } else {
               setUserPosts(response.data.posts);
             }
           } else {
-            // Trường hợp API trả về mảng bài đăng không có phân trang
             const posts = Array.isArray(response.data) ? response.data : [];
             setTotalPosts(posts.length);
             setHasMore(false);
             setUserPosts(posts);
           }
         } else {
-          // Không có dữ liệu
           if (!append) {
             setUserPosts([]);
           }
@@ -192,14 +179,12 @@ const Profile = () => {
     [profileUserId, limit]
   );
 
-  // Tải bài đăng lần đầu khi profileUserId thay đổi
   useEffect(() => {
     setPage(1);
     setUserPosts([]);
     fetchUserPosts(1, false);
   }, [profileUserId, fetchUserPosts]);
 
-  // Hàm tải thêm bài đăng
   const loadMore = useCallback(() => {
     if (loadingPosts || !hasMore) return;
 
@@ -208,7 +193,6 @@ const Profile = () => {
     setPage(nextPage);
   }, [page, loadingPosts, hasMore, fetchUserPosts]);
 
-  // Thiết lập Intersection Observer để tự động tải thêm bài đăng khi cuộn xuống
   useEffect(() => {
     if (!hasMore || loadingPosts) return;
 
@@ -258,7 +242,36 @@ const Profile = () => {
     }
   }, [dispatch, profileUserId, userInfo]);
 
-  // Xử lý khi người dùng click vào nút kết bạn
+  // Tính số bạn chung khi xem profile người khác
+  useEffect(() => {
+    const calculateMutualFriends = () => {
+      if (
+        profileUserId !== currentUser?._id &&
+        currentUser?.friends &&
+        userInfo?.friends
+      ) {
+        console.log("Current user friends:", currentUser.friends);
+        console.log("Profile user friends:", userInfo.friends);
+
+        // Dựa trên định nghĩa model, friends là Array
+        const currentUserFriends: string[] = currentUser.friends || [];
+        const profileUserFriends: string[] = userInfo.friends || [];
+
+        // Lọc ra những người bạn chung
+        const mutuals = profileUserFriends.filter((friendId: string) =>
+          currentUserFriends.includes(friendId)
+        );
+
+        console.log("Mutual friends:", mutuals);
+        setMutualFriends(mutuals.length);
+      } else {
+        setMutualFriends(0);
+      }
+    };
+
+    calculateMutualFriends();
+  }, [profileUserId, currentUser, userInfo]);
+
   const handleAddFriend = () => {
     dispatch(
       sendFriendRequest(profileUserId as string, currentUser._id) as any
@@ -267,7 +280,6 @@ const Profile = () => {
     setIsMenuOpen(false);
   };
 
-  // Xử lý khi người dùng click vào nút hủy lời mời kết bạn
   const handleCancelRequest = () => {
     dispatch(
       cancelFriendRequest(profileUserId as string, currentUser._id) as any
@@ -276,7 +288,6 @@ const Profile = () => {
     setIsMenuOpen(false);
   };
 
-  // Xử lý khi người dùng click vào nút chấp nhận lời mời kết bạn
   const handleAcceptRequest = () => {
     dispatch(
       acceptFriendRequest(profileUserId as string, currentUser._id) as any
@@ -285,7 +296,6 @@ const Profile = () => {
     setIsMenuOpen(false);
   };
 
-  // Xử lý khi người dùng click vào nút từ chối lời mời kết bạn
   const handleRejectRequest = () => {
     dispatch(
       rejectFriendRequest(profileUserId as string, currentUser._id) as any
@@ -294,15 +304,12 @@ const Profile = () => {
     setIsMenuOpen(false);
   };
 
-  // Xử lý khi người dùng click vào nút hủy kết bạn
   const handleUnfriend = () => {
     dispatch(unfriendUser(profileUserId as string, currentUser._id) as any);
     setFriendStatus("not_friend");
     setIsMenuOpen(false);
   };
 
-  // Hiển thị loading khi đang lấy thông tin profile
-  //Nếu không tìm thấy profile người dùng
   if (profileUserId && !userInfo) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -313,7 +320,6 @@ const Profile = () => {
     );
   }
 
-  //Nếu không có profileUserId hoặc không có profileUser
   if (!profileUserId || !userInfo) {
     return null;
   }
@@ -342,8 +348,24 @@ const Profile = () => {
           <div className="bg-white rounded-b-lg pt-16 pb-4 px-4 text-center shadow-sm">
             <h2 className="text-2xl font-bold mt-2">{userInfo?.fullname}</h2>
 
-            <div className="flex justify-center gap-10 text-sm text-gray-500 mt-1">
-              <span>{userInfo?.friends?.length || 0} friends</span>
+            <div className="flex justify-center gap-5 text-sm text-gray-500 mt-1">
+              <span
+                className="cursor-pointer hover:underline"
+                onClick={() => navigate(`/friends/${profileUserId}`)}
+              >
+                {userInfo?.friends?.length || 0} friends
+              </span>
+              {profileUserId !== currentUser?._id && mutualFriends > 0 && (
+                <span
+                  className="cursor-pointer hover:underline"
+                  title="Mutual friends with you"
+                  onClick={() =>
+                    navigate(`/friends/${profileUserId}?type=mutual`)
+                  }
+                >
+                  {mutualFriends} mutual
+                </span>
+              )}
               <span>{totalPosts} posts</span>
             </div>
 
@@ -379,7 +401,7 @@ const Profile = () => {
                   <Button
                     variant="gradientCustom"
                     className="flex items-center gap-2 px-3 py-3 mt-1.5 text-base leading-loose text-white shadow-md transition-all duration-300"
-                    onClick={() => navigate("/message")}
+                    onClick={() => navigate(`/message?userId=${profileUserId}`)}
                   >
                     <FontAwesomeIcon icon={faCommentDots} />
                     <div>Message</div>
