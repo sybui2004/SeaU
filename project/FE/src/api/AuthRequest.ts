@@ -17,7 +17,15 @@ API.interceptors.request.use((req) => {
 
   return req;
 });
-export const logIn = (formData: FormData) => API.post("/auth/login", formData);
 
-export const signUp = (formData: FormData) =>
-  API.post("/auth/register", formData);
+export const logIn = (formData: { username: string; password: string }) =>
+  API.post("/auth/login", formData);
+
+export const signUp = (formData: {
+  fullname: string;
+  username: string;
+  password: string;
+}) => API.post("/auth/register", formData);
+
+export const adminLogin = (formData: { username: string; password: string }) =>
+  API.post("/auth/admin/login", formData);

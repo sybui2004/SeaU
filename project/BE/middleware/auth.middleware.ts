@@ -1,49 +1,47 @@
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction, RequestHandler } from "express";
+import * as jwt from "jsonwebtoken";
+import * as dotenv from "dotenv";
+
 dotenv.config();
 
 interface DecodedToken {
   id: string;
 }
 
-const secret = process.env.JWT_KEY || "fallback_secret";
-console.log("Middleware using secret key:", secret);
+const secret = process.env.JWT_KEY || "MERN";
 
-const authMiddleWare = async (
+const authMiddleware: RequestHandler = (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   try {
     const authHeader = req.headers.authorization;
+
     if (!authHeader) {
-      req.body.isAuthenticated = false;
-      return next();
+      res.status(401).json({ error: "Authentication required" });
+      return;
     }
 
     const token = authHeader.split(" ")[1];
+
     if (!token) {
-      req.body.isAuthenticated = false;
-      return next();
+      res.status(401).json({ error: "Authentication token required" });
+      return;
     }
 
     try {
-      const decoded = jwt.decode(token);
-
-      req.body._id = (decoded as any).id;
-      req.body.isAuthenticated = true;
+      const decoded = jwt.verify(token, secret) as DecodedToken;
+      req.body.userId = decoded.id;
       next();
     } catch (error) {
-      console.log("Token verification error:", error);
-      req.body.isAuthenticated = false;
-      next();
+      res.status(401).json({ error: "Invalid authentication token" });
+      return;
     }
   } catch (error) {
-    console.log("Auth middleware error:", error);
-    req.body.isAuthenticated = false;
-    next();
+    res.status(500).json({ error: "Server authentication error" });
+    return;
   }
 };
 
-export default authMiddleWare;
+export default authMiddleware;

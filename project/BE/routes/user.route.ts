@@ -13,55 +13,42 @@ import {
   getSentFriendRequests,
 } from "../controllers/user.controller";
 
-import authMiddleWare from "../middleware/auth.middleware";
+import authMiddleware from "../middleware/auth.middleware";
+import wrap from "./wrap";
+
 const router = Router();
 
 // Get user by id
-router.get("/:id", getUser);
+router.get("/:id", wrap(getUser));
 
 // Update user
-router.put("/:id", authMiddleWare, updateUser);
+router.put("/:id", authMiddleware, wrap(updateUser));
 
 // Delete user
-router.delete("/:id", authMiddleWare, deleteUser);
+router.delete("/:id", authMiddleware, wrap(deleteUser));
 
 // Send friend request
-router.post("/:id/friend-request", authMiddleWare, sendFriendRequest);
+router.post("/:id/friend-request", authMiddleware, wrap(sendFriendRequest));
 
 // Cancel friend request
-router.delete("/:id/friend-request", authMiddleWare, cancelFriendRequest);
+router.delete("/:id/friend-request", authMiddleware, wrap(cancelFriendRequest));
 
 // Accept friend request
-router.post("/:id/accept", authMiddleWare, acceptFriendRequest);
+router.post("/:id/accept", authMiddleware, wrap(acceptFriendRequest));
 
 // Reject friend request
-router.post("/:id/reject", authMiddleWare, rejectFriendRequest);
+router.post("/:id/reject", authMiddleware, wrap(rejectFriendRequest));
 
 // Unfriend user
-router.delete("/:id/unfriend", authMiddleWare, unfriendUser);
+router.delete("/:id/unfriend", authMiddleware, wrap(unfriendUser));
 
 // Get friends list
-router.get(
-  "/:id/friends",
-  (req: Request, res: Response, next: NextFunction) => {
-    getFriendsList(req, res).catch(next);
-  }
-);
+router.get("/:id/friends", wrap(getFriendsList));
 
 // Get received friend requests
-router.get(
-  "/:id/friend-requests/received",
-  (req: Request, res: Response, next: NextFunction) => {
-    getReceivedFriendRequests(req, res).catch(next);
-  }
-);
+router.get("/:id/friend-requests/received", wrap(getReceivedFriendRequests));
 
 // Get sent friend requests
-router.get(
-  "/:id/friend-requests/sent",
-  (req: Request, res: Response, next: NextFunction) => {
-    getSentFriendRequests(req, res).catch(next);
-  }
-);
+router.get("/:id/friend-requests/sent", wrap(getSentFriendRequests));
 
 export default router;

@@ -23,6 +23,19 @@ export const getTimelinePost = (
   };
 };
 
+export const createPost = (postData: any) => {
+  return async (dispatch: any) => {
+    dispatch({ type: "UPLOAD_START" });
+    try {
+      const { data } = await PostApi.createPost(postData);
+      dispatch({ type: "UPLOAD_SUCCESS", data: data });
+    } catch (error) {
+      dispatch({ type: "UPLOAD_FAIL" });
+      console.log(error);
+    }
+  };
+};
+
 export const likePost = (postId: string, userId: string) => {
   return async (dispatch: any) => {
     try {

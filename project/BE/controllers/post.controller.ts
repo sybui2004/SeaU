@@ -6,13 +6,30 @@ import { responseUtils } from "../utils/response.utils";
 
 // Create new Post
 export const createPost = async (req: Request, res: Response) => {
-  const newPost = new Post(req.body);
+  console.log("createPost controller - request body:", req.body);
+
+  // Kiểm tra userId từ middleware
+  if (!req.body.userId) {
+    console.log("No userId found in request body");
+    return responseUtils.error(res, "Authentication required", 401);
+  }
 
   try {
+    if (req.body._id) {
+      delete req.body._id;
+    }
+
+    // Đảm bảo userId được set từ middleware được giữ nguyên
+    const newPost = new Post({
+      ...req.body,
+    });
+
+    console.log("Saving new post:", newPost);
     await newPost.save();
     responseUtils.success(res, newPost);
   } catch (error) {
-    responseUtils.error;
+    console.error("Error creating post:", error);
+    responseUtils.error(res, "Error creating post", 500);
   }
 };
 
@@ -22,113 +39,118 @@ export const getPost = async (req: Request, res: Response) => {
 
   try {
     const post = await Post.findById(id);
+    if (!post) {
+      responseUtils.error(res, "Post not found", 404);
+      return;
+    }
     responseUtils.success(res, post);
   } catch (error) {
-    responseUtils.error;
+    responseUtils.error(res, "Error fetching post", 500);
   }
 };
 
 // Update a Post
 export const updatePost = async (req: Request, res: Response) => {
   const postId = req.params.id;
-  const { userId, currentUserAdminStatus } = req.body;
+  const { userId } = req.body;
+
+  if (!userId) {
+    console.log("Update post: No userId found");
+    return responseUtils.error(res, "Authentication required", 401);
+  }
 
   try {
     const post = await Post.findById(postId);
     if (!post) {
-      res.status(404).json("Post not found");
+      responseUtils.error(res, "Post not found", 404);
       return;
     }
-    if (post.userId == userId || currentUserAdminStatus) {
-      await post.updateOne({ $set: req.body });
-      responseUtils.success(res, "Post Updated");
-    } else {
-      res.status(403).json("Action forbidden");
+
+    if (post.userId.toString() !== userId) {
+      responseUtils.error(res, "Action forbidden", 403);
+      return;
     }
+
+    if (req.body._id) delete req.body._id;
+    // Không cần xóa isAuthenticated nữa
+
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      { $set: req.body },
+      { new: true }
+    );
+
+    responseUtils.success(res, updatedPost);
   } catch (error) {
-    responseUtils.error;
+    responseUtils.error(res, "Error updating post", 500);
   }
 };
 
 // Delete a Post
 export const deletePost = async (req: Request, res: Response) => {
   const postId = req.params.id;
-  const { userId, currentUserAdminStatus } = req.body;
+  const { userId } = req.body;
+
+  if (!userId) {
+    console.log("Delete post: No userId found");
+    return responseUtils.error(res, "Authentication required", 401);
+  }
 
   try {
     const post = await Post.findById(postId);
     if (!post) {
-      res.status(404).json("Post not found");
+      responseUtils.error(res, "Post not found", 404);
       return;
     }
-    if (post.userId == userId || currentUserAdminStatus) {
-      await post.deleteOne();
-      responseUtils.success(res, "Post deleted");
-    } else {
-      res.status(403).json("Action forbidden");
+
+    // Chỉ cho phép chủ sở hữu bài viết xóa
+    if (post.userId.toString() !== userId) {
+      responseUtils.error(res, "Action forbidden", 403);
+      return;
     }
+
+    await post.deleteOne();
+    responseUtils.success(res, "Post deleted successfully");
   } catch (error) {
-    responseUtils.error;
+    responseUtils.error(res, "Error deleting post", 500);
   }
 };
 
-// React a Post
+// Like/Unlike a Post
 export const likePost = async (req: Request, res: Response) => {
   const id = req.params.id;
-  const { userId, currentUserAdminStatus } = req.body;
+  const { userId } = req.body;
+
+  if (!userId) {
+    console.log("Like post: No userId found");
+    return responseUtils.error(res, "Authentication required", 401);
+  }
 
   try {
     const post = await Post.findById(id);
     if (!post) {
-      res.status(404).json("Post not found");
+      responseUtils.error(res, "Post not found", 404);
       return;
     }
-    if (!post.likes.includes(userId) || currentUserAdminStatus) {
-      await post.updateOne({ $push: { likes: userId } });
-      responseUtils.success(res, "Post liked");
-    } else {
+
+    // Kiểm tra xem user đã like chưa để toggle
+    const isLiked = post.likes.includes(userId);
+
+    if (isLiked) {
+      // Unlike nếu đã like
       await post.updateOne({ $pull: { likes: userId } });
       responseUtils.success(res, "Post unliked");
+    } else {
+      // Like nếu chưa like
+      await post.updateOne({ $push: { likes: userId } });
+      responseUtils.success(res, "Post liked");
     }
   } catch (error) {
-    responseUtils.error(res, "Like post failed. Please try again.");
+    responseUtils.error(res, "Like post failed. Please try again.", 500);
   }
 };
 
-// Get all posts of a user
-export const getUserPosts = async (req: Request, res: Response) => {
-  try {
-    const userId = req.params.id;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
-
-    const totalPosts = await Post.countDocuments({ userId: userId });
-
-    const userPosts = await Post.find({ userId: userId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const totalPages = Math.ceil(totalPosts / limit);
-
-    return responseUtils.success(res, {
-      posts: userPosts,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalItems: totalPosts,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-    });
-  } catch (error) {
-    console.error("Error retrieving user posts:", error);
-    return responseUtils.error(res, "Error retrieving user posts", 500);
-  }
-};
-
-// Get Timeline Post
+// Get Timeline Posts (các bài viết của người dùng và bạn bè)
 export const getTimelinePost = async (req: Request, res: Response) => {
   try {
     const userId = req.params.id;
@@ -194,6 +216,39 @@ export const getTimelinePost = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error retrieving timeline posts:", error);
-    return responseUtils.error(res, "Error retrieving timeline posts", 500);
+    responseUtils.error(res, "Error retrieving timeline posts", 500);
+  }
+};
+
+// Get user's posts
+export const getUserPosts = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalPosts = await Post.countDocuments({ userId: userId });
+
+    const userPosts = await Post.find({ userId: userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    return responseUtils.success(res, {
+      posts: userPosts,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalPosts,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error retrieving user posts:", error);
+    return responseUtils.error(res, "Error retrieving user posts", 500);
   }
 };

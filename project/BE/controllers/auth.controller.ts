@@ -3,6 +3,13 @@ import { Request, Response } from "express";
 import { responseUtils } from "../utils/response.utils";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
+
+// Sử dụng biến môi trường với giá trị mặc định giống với middleware
+const secret = process.env.JWT_KEY || "MERN";
+console.log("Auth controller using secret key:", secret);
+
 // Register
 export const registerUser = async (req: Request, res: Response) => {
   const salt = await bcrypt.genSalt(10);
@@ -17,13 +24,9 @@ export const registerUser = async (req: Request, res: Response) => {
       return;
     }
     const user = await newUser.save();
-    const token = jwt.sign(
-      { username: user.username, id: user._id },
-      process.env.JWT_KEY || "",
-      {
-        expiresIn: "1h",
-      }
-    );
+    const token = jwt.sign({ username: user.username, id: user._id }, secret, {
+      expiresIn: "1h",
+    });
     responseUtils.success(res, { user, token });
   } catch (error) {
     responseUtils.error(res, "Registration failed. Please try again.");
@@ -48,14 +51,59 @@ export const loginUser = async (req: Request, res: Response) => {
     } else {
       const token = jwt.sign(
         { username: user.username, id: user._id },
-        process.env.JWT_KEY || "",
+        secret,
         {
-          expiresIn: "1h",
+          expiresIn: "12h",
         }
       );
       responseUtils.success(res, { user, token });
     }
   } catch (error) {
     responseUtils.error(res, "Login failed. Please try again.");
+  }
+};
+
+// Admin Login
+export const loginAdmin = async (req: Request, res: Response) => {
+  const { username, password } = req.body;
+  console.log("Admin login attempt:", { username });
+
+  try {
+    const user = await User.findOne({ username: username });
+    console.log("User found:", !!user);
+
+    if (!user) {
+      res.status(404).json("User does not exist");
+      return;
+    }
+
+    console.log("Is user admin:", user.isAdmin);
+    if (!user.isAdmin) {
+      res.status(403).json("Access denied. Not an admin account.");
+      return;
+    }
+
+    const validity = await bcrypt.compare(password, user.password);
+    if (!validity) {
+      res.status(400).json("Wrong password");
+      return;
+    }
+
+    const token = jwt.sign(
+      {
+        username: user.username,
+        id: user._id,
+        isAdmin: user.isAdmin,
+      },
+      secret,
+      {
+        expiresIn: "12h", // Thời gian token dài hơn cho admin
+      }
+    );
+
+    responseUtils.success(res, { user, token });
+  } catch (error) {
+    console.error("Admin login error:", error);
+    responseUtils.error(res, "Admin login failed. Please try again.");
   }
 };

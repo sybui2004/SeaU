@@ -27,13 +27,11 @@ const FriendsList = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalFriends, setTotalFriends] = useState(0);
   const itemsPerPage = 10;
 
-  // Lấy thông tin người dùng
+  // Fetch user info
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
@@ -49,23 +47,21 @@ const FriendsList = () => {
     fetchUserInfo();
   }, [userId]);
 
-  // Lấy danh sách bạn bè
+  // Fetch friends list
   useEffect(() => {
     const fetchFriends = async () => {
       if (!userInfo) return;
 
       setLoading(true);
       try {
-        // Sử dụng API phân trang có sẵn thay vì lấy tất cả bạn bè
         const response = await getFriendsList(
           userId as string,
           currentPage,
           itemsPerPage
         );
 
-        const { friends, total, totalPages: pages } = response.data;
+        const { friends, totalPages: pages } = response.data;
 
-        // Nếu là danh sách bạn chung, lọc ra những người bạn chung
         let friendsData = friends;
         if (
           listType === "mutual" &&
@@ -78,7 +74,6 @@ const FriendsList = () => {
         }
 
         setFriends(friendsData);
-        setTotalFriends(total);
         setTotalPages(pages);
       } catch (error) {
         console.error("Error fetching friends:", error);
@@ -90,17 +85,14 @@ const FriendsList = () => {
     fetchFriends();
   }, [userInfo, listType, currentUser, userId, currentPage]);
 
-  // Lọc bạn bè theo tìm kiếm
   const filteredFriends = friends.filter((friend) =>
     friend.fullname.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Chuyển trang
   const goToPage = (page: number) => {
     setCurrentPage(page);
   };
 
-  // Chuyển đổi kiểu danh sách (all/mutual)
   const toggleListType = () => {
     const newType = listType === "all" ? "mutual" : "all";
     navigate(`/friends/${userId}?type=${newType}`);
@@ -145,7 +137,6 @@ const FriendsList = () => {
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                // Khi search, không cần reset trang vì đang search từ client
               }}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}

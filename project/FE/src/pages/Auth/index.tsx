@@ -1,7 +1,7 @@
 // AuthForm.tsx
 "use client";
 import { useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch } from "react-redux";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ImageSlider,
@@ -18,7 +18,6 @@ import { logIn, signUp } from "@/actions/AuthAction";
 
 function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
-  const loading = useSelector((state: any) => state.authReducer.loading);
   const dispatch = useDispatch();
   const [rememberMe, setRememberMe] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);

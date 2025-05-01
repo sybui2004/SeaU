@@ -1,11 +1,10 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import React, { Suspense, useEffect } from "react";
 import { useSelector } from "react-redux";
-// import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import PrivateRoute from "./components/PrivateRoutes";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const loadComponent = (importFunc: any) =>
   React.lazy(() =>
@@ -25,10 +24,11 @@ const Admin = loadComponent(() => import("./pages/Admin"));
 const Settings = loadComponent(() => import("./pages/Settings"));
 const SearchResults = loadComponent(() => import("./pages/SearchResults"));
 const FriendsListPage = loadComponent(() => import("./pages/FriendsList"));
-function App() {
-  const user = useSelector((state: any) => state.authReducer.authData);
+const AdminLogin = loadComponent(() => import("./pages/AdminLogin"));
 
-  // Check dark mode setting and apply it
+function App() {
+  const { authData } = useSelector((state: any) => state.authReducer);
+
   useEffect(() => {
     const isDarkMode = localStorage.getItem("darkMode") === "true";
     if (isDarkMode) {
@@ -39,12 +39,12 @@ function App() {
   }, []);
 
   return (
-    <>
+    <div className="App">
       <ToastContainer
         position="bottom-right"
         autoClose={5000}
         hideProgressBar={false}
-        newestOnTop={false}
+        newestOnTop={true}
         closeOnClick
         rtl={false}
         pauseOnFocusLoss
@@ -52,93 +52,115 @@ function App() {
         pauseOnHover
         theme="light"
       />
-
       <Suspense fallback={<div>Loading...</div>}>
         <Routes>
+          {/* Public routes */}
           <Route
             path="/"
-            element={user ? <Navigate to="home" /> : <Navigate to="auth" />}
-          />
-          <Route
-            path="/home"
             element={
-              <PrivateRoute>
-                <Home />
-              </PrivateRoute>
+              authData ? <Navigate to="/home" /> : <Navigate to="/auth" />
             }
           />
+
+          {/* Login Routes */}
+          <Route
+            path="/auth"
+            element={authData ? <Navigate to="/home" /> : <Auth />}
+          />
+          <Route
+            path="admin/login"
+            element={
+              authData && authData.user?.isAdmin ? (
+                <Navigate to="/admin" />
+              ) : (
+                <AdminLogin />
+              )
+            }
+          />
+
+          {/* Protected user routes */}
+          <Route
+            path="/home/*"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin routes */}
+          <Route
+            path="admin/*"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <Admin />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Other routes */}
           <Route
             path="/search"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <SearchResults />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
-          />
-          <Route
-            path="/auth"
-            element={user ? <Navigate to="../home" /> : <Auth />}
           />
           <Route
             path="/profile/:id"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <ProfilePage />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/message"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <Messages />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/bot"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <Chatbot />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/edit-profile/:id"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <ProfileEdit />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <PrivateRoute>
-                <Admin />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/settings"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <Settings />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/friends/:id"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <FriendsListPage />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
+
+          {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Suspense>
-    </>
+    </div>
   );
 }
 

@@ -3,26 +3,16 @@ import axios from "axios";
 const API = axios.create({ baseURL: "http://localhost:3000", timeout: 10000 });
 
 API.interceptors.request.use((req) => {
-  try {
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      req.headers.Authorization = `Bearer ${token}`;
-    } else {
-      const profileData = localStorage.getItem("profile");
-      if (profileData) {
-        const profile = JSON.parse(profileData);
-        if (profile && profile.token) {
-          req.headers.Authorization = `Bearer ${profile.token}`;
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Lỗi khi xử lý token:", error);
+  if (localStorage.getItem("profile")) {
+    req.headers.Authorization = `Bearer ${
+      JSON.parse(localStorage.getItem("profile") as string).token
+    }`;
   }
+
   return req;
 });
-
 export const getAllConversations = (id: any) => API.get(`/conversation/${id}`);
+
 export const getConversationById = (id: any) =>
   API.get(`/conversation/get/${id}`);
 

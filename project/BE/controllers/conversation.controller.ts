@@ -55,11 +55,17 @@ export const getConversation = async (req: Request, res: Response) => {
   const conversation = await Conversation.findById(conversationId);
   return responseUtils.success(res, { conversation });
 };
+
 // Find a conversation between two users
 export const findConversation = async (req: Request, res: Response) => {
   try {
     const conversation = await Conversation.findOne({
-      members: { $all: [req.params.firstId, req.params.secondId] },
+      members: {
+        $all: [
+          new mongoose.Types.ObjectId(req.params.firstUserId),
+          new mongoose.Types.ObjectId(req.params.secondUserId),
+        ],
+      },
     });
     return responseUtils.success(res, {
       conversation,
@@ -211,9 +217,9 @@ export const deleteConversation = async (req: Request, res: Response) => {
 
 // Add a member to a group chat
 export const addToGroup = async (req: Request, res: Response) => {
-  const { conversationId, userId, adminId } = req.body;
+  const { conversationId, userToAddId, adminId } = req.body;
 
-  if (!conversationId || !userId || !adminId) {
+  if (!conversationId || !userToAddId || !adminId) {
     return responseUtils.error(res, "Missing required fields", 400);
   }
 
@@ -234,12 +240,20 @@ export const addToGroup = async (req: Request, res: Response) => {
     ) {
       return responseUtils.error(res, "Only admin can add members", 403);
     }
+    console.log(">> userToAddId:", userToAddId);
+    console.log(">> adminId:", adminId);
+    console.log(">> memberIds:", conversation.members);
+    console.log(
+      ">> includes result:",
+      conversation.members.includes(userToAddId)
+    );
 
-    if (conversation.members.includes(userId)) {
+    const userObjectId = new mongoose.Types.ObjectId(userToAddId);
+    if (conversation.members.some((m) => m.equals(userObjectId))) {
       return responseUtils.error(res, "User is already in the group", 400);
     }
 
-    conversation.members.push(userId);
+    conversation.members.push(userToAddId);
 
     await conversation.save();
 
@@ -259,9 +273,9 @@ export const addToGroup = async (req: Request, res: Response) => {
 
 // Remove a member from a group chat
 export const removeFromGroup = async (req: Request, res: Response) => {
-  const { conversationId, userId, adminId } = req.body;
+  const { conversationId, userToDelId, adminId } = req.body;
 
-  if (!conversationId || !userId || !adminId) {
+  if (!conversationId || !userToDelId || !adminId) {
     return responseUtils.error(res, "Missing required fields", 400);
   }
 
@@ -283,16 +297,16 @@ export const removeFromGroup = async (req: Request, res: Response) => {
       return responseUtils.error(res, "Only admin can remove members", 403);
     }
 
-    if (!conversation.members.includes(userId)) {
+    if (!conversation.members.includes(userToDelId)) {
       return responseUtils.error(res, "User is not in the group", 400);
     }
 
-    if (userId === adminId) {
+    if (userToDelId === adminId) {
       return responseUtils.error(res, "Admin cannot be removed", 400);
     }
 
     conversation.members = conversation.members.filter(
-      (member) => member.toString() !== userId
+      (member) => member.toString() !== userToDelId
     );
 
     await conversation.save();

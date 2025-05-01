@@ -1,4 +1,4 @@
-import express, { NextFunction, Request, Response } from "express";
+import express from "express";
 import {
   createPost,
   getPost,
@@ -8,35 +8,30 @@ import {
   getTimelinePost,
   getUserPosts,
 } from "../controllers/post.controller";
-import authMiddleWare from "../middleware/auth.middleware";
+import authMiddleware from "../middleware/auth.middleware";
+import wrap from "./wrap";
+
 const router = express.Router();
 
-// Create a new post
-router.post("/", authMiddleWare, createPost);
+// Create post
+router.post("/", authMiddleware, wrap(createPost));
 
-// Get a post by id
-router.get("/:id", getPost);
+// Get post by id
+router.get("/:id", wrap(getPost));
 
-// Update a post
-router.put("/:id", authMiddleWare, updatePost);
+// Update post
+router.put("/:id", authMiddleware, wrap(updatePost));
 
-// Delete a post
-router.delete("/:id", authMiddleWare, deletePost);
+// Delete post
+router.delete("/:id", authMiddleware, wrap(deletePost));
 
-// Like a post
-router.put("/:id/like", authMiddleWare, likePost);
+// Like post
+router.put("/:id/like", authMiddleware, wrap(likePost));
 
 // Get timeline posts
-router.get(
-  "/:id/timeline",
-  (req: Request, res: Response, next: NextFunction) => {
-    getTimelinePost(req, res).catch(next);
-  }
-);
+router.get("/:id/timeline", wrap(getTimelinePost));
 
 // Get user posts
-router.get("/user/:id", (req: Request, res: Response, next: NextFunction) => {
-  getUserPosts(req, res).catch(next);
-});
+router.get("/user/:id", wrap(getUserPosts));
 
 export default router;

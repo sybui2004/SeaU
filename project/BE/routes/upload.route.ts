@@ -1,7 +1,8 @@
 import express, { Request, Response } from "express";
-const router = express.Router();
 import multer from "multer";
-import authMiddleWare from "../middleware/auth.middleware";
+import authMiddleware from "../middleware/auth.middleware";
+
+const router = express.Router();
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -15,7 +16,7 @@ const upload = multer({ storage: storage });
 
 router.post(
   "/",
-  authMiddleWare,
+  authMiddleware,
   upload.single("file"),
   (req: Request, res: Response): void => {
     try {

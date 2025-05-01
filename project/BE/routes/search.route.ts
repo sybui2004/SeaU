@@ -1,17 +1,14 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import { searchController } from "../controllers/search.controller";
-import authMiddleWare from "../middleware/auth.middleware";
+import authMiddleware from "../middleware/auth.middleware";
+import wrap from "./wrap";
 
 const router = express.Router();
 
 // Route search both users and posts
-router.get("/", authMiddleWare, (req: Request, res: Response) => {
-  searchController.search(req, res);
-});
+router.get("/", authMiddleware, wrap(searchController.search));
 
 // Route search only users
-router.get("/users", authMiddleWare, (req: Request, res: Response) => {
-  searchController.searchUsers(req, res);
-});
+router.get("/users", authMiddleware, wrap(searchController.searchUsers));
 
 export default router;

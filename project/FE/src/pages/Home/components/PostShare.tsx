@@ -8,7 +8,8 @@ import {
   UilSchedule,
   UilTimes,
 } from "@iconscout/react-unicons";
-import { uploadImage, uploadPost } from "@/actions/UploadAction";
+import { uploadImage } from "@/actions/UploadAction";
+import { createPost } from "@/actions/PostAction";
 import { PostData } from "@/api/UploadRequest";
 
 const PostShare = () => {
@@ -53,13 +54,13 @@ const PostShare = () => {
 
       try {
         dispatch(uploadImage(formData) as any);
-        dispatch(uploadPost(newPost) as any);
+        dispatch(createPost(newPost) as any);
         reset();
       } catch (error) {
         console.log(error);
       }
     } else {
-      dispatch(uploadPost(newPost) as any);
+      dispatch(createPost(newPost) as any);
       reset();
     }
   };

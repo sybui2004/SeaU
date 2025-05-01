@@ -1,74 +1,51 @@
 import express from "express";
-import type { Request, Response, NextFunction } from "express";
 import * as commentController from "../controllers/comment.controller";
-import authMiddleWare from "../middleware/auth.middleware";
+import authMiddleware from "../middleware/auth.middleware";
+import wrap from "./wrap";
 
 const router = express.Router();
 
 // Get all comments of a post
-router.get("/:postId", (req: Request, res: Response, next: NextFunction) => {
-  commentController.getCommentsByPostId(req, res).catch(next);
-});
+router.get("/:postId", wrap(commentController.getCommentsByPostId));
 
 // Get a comment by id
+router.get("/get/:commentId", wrap(commentController.getCommentById));
+
+// Get all replies of a comment
 router.get(
-  "/get/:commentId",
-  (req: Request, res: Response, next: NextFunction) => {
-    commentController.getCommentById(req, res).catch(next);
-  }
+  "/:commentId/replies",
+  wrap(commentController.getRepliesByCommentId)
 );
 
 // Create new comment
-router.post(
-  "/",
-  authMiddleWare,
-  (req: Request, res: Response, next: NextFunction) => {
-    commentController.createComment(req, res).catch(next);
-  }
-);
+router.post("/", authMiddleware, wrap(commentController.createComment));
 
 // Update comment
 router.put(
   "/:commentId",
-  authMiddleWare,
-  (req: Request, res: Response, next: NextFunction) => {
-    commentController.updateComment(req, res).catch(next);
-  }
+  authMiddleware,
+  wrap(commentController.updateComment)
 );
 
 // Delete comment
 router.delete(
   "/:commentId",
-  authMiddleWare,
-  (req: Request, res: Response, next: NextFunction) => {
-    commentController.deleteComment(req, res).catch(next);
-  }
+  authMiddleware,
+  wrap(commentController.deleteComment)
 );
 
 // Like/unlike comment
 router.put(
   "/:commentId/like",
-  authMiddleWare,
-  (req: Request, res: Response, next: NextFunction) => {
-    commentController.likeComment(req, res).catch(next);
-  }
-);
-
-// Get all replies of a comment
-router.get(
-  "/:commentId/replies",
-  (req: Request, res: Response, next: NextFunction) => {
-    commentController.getRepliesByCommentId(req, res).catch(next);
-  }
+  authMiddleware,
+  wrap(commentController.likeComment)
 );
 
 // Create reply for comment
 router.post(
   "/:commentId/reply",
-  authMiddleWare,
-  (req: Request, res: Response, next: NextFunction) => {
-    commentController.createReply(req, res).catch(next);
-  }
+  authMiddleware,
+  wrap(commentController.createReply)
 );
 
 export default router;

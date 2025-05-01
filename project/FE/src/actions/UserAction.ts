@@ -25,20 +25,6 @@ export const updateUser = (id: string, formData: any) => {
   };
 };
 
-// // Action lấy danh sách bạn bè
-// export const getUserFriends = (userId: string) => {
-//   return async (dispatch: any) => {
-//     dispatch({ type: "USER_FRIENDS_LOADING" });
-//     try {
-//       const { data } = await UserApi.getUserFriends(userId);
-//       dispatch({ type: "USER_FRIENDS_SUCCESS", data: data });
-//     } catch (error) {
-//       console.error("Error fetching user friends:", error);
-//       dispatch({ type: "USER_FRIENDS_FAIL" });
-//     }
-//   };
-// };
-
 //Action gửi lời mời kết bạn với người dùng
 export const sendFriendRequest = (
   receiverUserId: string,
