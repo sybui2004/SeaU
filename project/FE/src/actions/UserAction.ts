@@ -25,7 +25,6 @@ export const updateUser = (id: string, formData: any) => {
   };
 };
 
-//Action gửi lời mời kết bạn với người dùng
 export const sendFriendRequest = (
   receiverUserId: string,
   currentUserId: string
@@ -40,7 +39,6 @@ export const sendFriendRequest = (
   };
 };
 
-//Action hủy lời mời kết bạn với người dùng
 export const cancelFriendRequest = (
   receiverUserId: string,
   currentUserId: string
@@ -55,7 +53,6 @@ export const cancelFriendRequest = (
   };
 };
 
-//Action chấp nhận lời mời kết bạn với người dùng
 export const acceptFriendRequest = (
   receiverUserId: string,
   currentUserId: string
@@ -70,7 +67,6 @@ export const acceptFriendRequest = (
   };
 };
 
-//Action từ chối lời mời kết bạn với người dùng
 export const rejectFriendRequest = (
   receiverUserId: string,
   currentUserId: string
@@ -85,7 +81,6 @@ export const rejectFriendRequest = (
   };
 };
 
-//Action hủy kết bạn với người dùng
 export const unfriendUser = (receiverUserId: string, currentUserId: string) => {
   return async (dispatch: any) => {
     try {

@@ -112,7 +112,7 @@ export const createComment = async (req: Request, res: Response) => {
 export const updateComment = async (req: Request, res: Response) => {
   try {
     const commentId = req.params.commentId;
-    const { content, userId, currentUserAdminStatus } = req.body;
+    const { content, userId, isAdmin } = req.body;
 
     if (!content?.trim()) {
       return responseUtils.error(res, "Comment content cannot be empty", 400);
@@ -123,8 +123,7 @@ export const updateComment = async (req: Request, res: Response) => {
     if (!comment) {
       return responseUtils.error(res, "Comment not found", 404);
     }
-
-    if (comment.userId.toString() !== userId && !currentUserAdminStatus) {
+    if (comment.userId.toString() !== userId && !isAdmin) {
       return responseUtils.error(
         res,
         "You don't have permission to edit this comment",
@@ -133,7 +132,10 @@ export const updateComment = async (req: Request, res: Response) => {
     }
 
     comment.content = content;
-    comment.isEdited = true;
+    if (!isAdmin || req.body.markAsEdited) {
+      comment.isEdited = true;
+    }
+
     const updatedComment = await comment.save();
 
     const populatedComment = await Comment.findById(
@@ -155,7 +157,11 @@ export const updateComment = async (req: Request, res: Response) => {
 export const deleteComment = async (req: Request, res: Response) => {
   try {
     const commentId = req.params.commentId;
-    const { userId, currentUserAdminStatus } = req.body;
+    const { userId, isAdmin } = req.body;
+
+    if (!userId) {
+      return responseUtils.error(res, "User ID is required", 400);
+    }
 
     const comment = await Comment.findById(commentId);
 
@@ -163,7 +169,7 @@ export const deleteComment = async (req: Request, res: Response) => {
       return responseUtils.error(res, "Comment not found", 404);
     }
 
-    if (comment.userId.toString() !== userId && !currentUserAdminStatus) {
+    if (comment.userId.toString() !== userId && !isAdmin) {
       return responseUtils.error(
         res,
         "You don't have permission to delete this comment",
@@ -305,5 +311,74 @@ export const createReply = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error creating reply:", error);
     return responseUtils.error(res, "Error creating reply", 500);
+  }
+};
+
+// Get all comments by user for admin
+export const getAllCommentsByUserForAdmin = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const userId = req.params.userId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalComments = await Comment.countDocuments({ userId });
+    const totalPages = Math.ceil(totalComments / limit);
+
+    const comments = await Comment.find({ userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("userId", "fullname profilePic")
+      .populate("postId", "title content");
+
+    return responseUtils.success(res, {
+      comments,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalComments,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error retrieving user comments for admin:", error);
+    return responseUtils.error(res, "Error retrieving comments", 500);
+  }
+};
+
+// Get all comments for admin dashboard
+export const getAllCommentsForAdmin = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+    const totalComments = await Comment.countDocuments();
+    const totalPages = Math.ceil(totalComments / limit);
+
+    const comments = await Comment.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("userId", "fullname profilePic")
+      .populate("postId", "title content");
+
+    return responseUtils.success(res, {
+      comments,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalComments,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error retrieving all comments for admin:", error);
+    return responseUtils.error(res, "Error retrieving comments", 500);
   }
 };

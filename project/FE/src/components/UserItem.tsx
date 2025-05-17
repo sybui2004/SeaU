@@ -15,10 +15,6 @@ interface UserItemProps {
   buttonText?: string;
 }
 
-/**
- * A reusable component to display user information in a card format
- * Can be used in SearchResults, FriendsList, etc.
- */
 const UserItem = ({
   user,
   serverPublic,

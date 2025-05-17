@@ -3,7 +3,7 @@ export { default as Header } from "./Header";
 export { default as UserList } from "./UserList";
 export { default as UserDetail } from "./UserDetail";
 export { default as PostList } from "./PostList";
-export { default as MessageList } from "./MessageList";
+export { default as ConversationList } from "./ConversationList";
 export { default as CommentList } from "./CommentList";
 export { default as Dashboard } from "./Dashboard";
 export { default as UserPosts } from "./UserPosts";

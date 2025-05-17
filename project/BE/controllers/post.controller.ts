@@ -8,7 +8,6 @@ import { responseUtils } from "../utils/response.utils";
 export const createPost = async (req: Request, res: Response) => {
   console.log("createPost controller - request body:", req.body);
 
-  // Kiểm tra userId từ middleware
   if (!req.body.userId) {
     console.log("No userId found in request body");
     return responseUtils.error(res, "Authentication required", 401);
@@ -19,7 +18,6 @@ export const createPost = async (req: Request, res: Response) => {
       delete req.body._id;
     }
 
-    // Đảm bảo userId được set từ middleware được giữ nguyên
     const newPost = new Post({
       ...req.body,
     });
@@ -53,6 +51,7 @@ export const getPost = async (req: Request, res: Response) => {
 export const updatePost = async (req: Request, res: Response) => {
   const postId = req.params.id;
   const { userId } = req.body;
+  const isAdmin = req.body.isAdmin || false;
 
   if (!userId) {
     console.log("Update post: No userId found");
@@ -66,13 +65,12 @@ export const updatePost = async (req: Request, res: Response) => {
       return;
     }
 
-    if (post.userId.toString() !== userId) {
+    if (!isAdmin && post.userId.toString() !== userId) {
       responseUtils.error(res, "Action forbidden", 403);
       return;
     }
 
     if (req.body._id) delete req.body._id;
-    // Không cần xóa isAuthenticated nữa
 
     const updatedPost = await Post.findByIdAndUpdate(
       postId,
@@ -90,6 +88,12 @@ export const updatePost = async (req: Request, res: Response) => {
 export const deletePost = async (req: Request, res: Response) => {
   const postId = req.params.id;
   const { userId } = req.body;
+  const isAdmin = req.body.isAdmin || false;
+
+  console.log("Delete Post - Request Body:", req.body);
+  console.log("Delete Post - isAdmin flag:", isAdmin);
+  console.log("Delete Post - userId:", userId);
+  console.log("Delete Post - Headers:", req.headers);
 
   if (!userId) {
     console.log("Delete post: No userId found");
@@ -103,8 +107,13 @@ export const deletePost = async (req: Request, res: Response) => {
       return;
     }
 
-    // Chỉ cho phép chủ sở hữu bài viết xóa
-    if (post.userId.toString() !== userId) {
+    console.log("Delete Post - Post userId:", post.userId.toString());
+    console.log(
+      "Delete Post - Condition check:",
+      !isAdmin && post.userId.toString() !== userId
+    );
+
+    if (!isAdmin && post.userId.toString() !== userId) {
       responseUtils.error(res, "Action forbidden", 403);
       return;
     }
@@ -112,6 +121,7 @@ export const deletePost = async (req: Request, res: Response) => {
     await post.deleteOne();
     responseUtils.success(res, "Post deleted successfully");
   } catch (error) {
+    console.error("Error deleting post:", error);
     responseUtils.error(res, "Error deleting post", 500);
   }
 };
@@ -133,15 +143,12 @@ export const likePost = async (req: Request, res: Response) => {
       return;
     }
 
-    // Kiểm tra xem user đã like chưa để toggle
     const isLiked = post.likes.includes(userId);
 
     if (isLiked) {
-      // Unlike nếu đã like
       await post.updateOne({ $pull: { likes: userId } });
       responseUtils.success(res, "Post unliked");
     } else {
-      // Like nếu chưa like
       await post.updateOne({ $push: { likes: userId } });
       responseUtils.success(res, "Post liked");
     }
@@ -150,7 +157,7 @@ export const likePost = async (req: Request, res: Response) => {
   }
 };
 
-// Get Timeline Posts (các bài viết của người dùng và bạn bè)
+// Get Timeline Posts
 export const getTimelinePost = async (req: Request, res: Response) => {
   try {
     const userId = req.params.id;
@@ -250,5 +257,51 @@ export const getUserPosts = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error retrieving user posts:", error);
     return responseUtils.error(res, "Error retrieving user posts", 500);
+  }
+};
+
+// Get all posts for admin
+export const getAllPostsForAdmin = async (req: Request, res: Response) => {
+  try {
+    console.log("getAllPostsForAdmin called");
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const searchQuery = req.query.search as string;
+    const skip = (page - 1) * limit;
+
+    console.log("Query params:", { page, limit, searchQuery });
+
+    const filter: any = {};
+
+    if (searchQuery) {
+      filter.content = { $regex: searchQuery, $options: "i" };
+    }
+
+    console.log("Constructed filter:", filter);
+
+    const totalPosts = await Post.countDocuments(filter);
+    console.log("Total matching posts:", totalPosts);
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    const posts = await Post.find(filter)
+      .populate("userId", "fullname profilePic")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    console.log(`Found ${posts.length} posts`);
+
+    return responseUtils.success(res, {
+      posts,
+      pagination: {
+        totalPosts,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting posts for admin:", error);
+    return responseUtils.error(res, "Error retrieving posts", 500);
   }
 };

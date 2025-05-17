@@ -1,17 +1,53 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { searchApi } from "@/api/SearchRequest";
 import Post from "./Home/components/Post";
 import { useSelector } from "react-redux";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "./Home/components/Header";
 
+interface User {
+  _id: string;
+  fullname: string;
+  profilePic?: string;
+  occupation?: string;
+  friends?: string[];
+}
+
+interface Post {
+  _id: string;
+  content?: string;
+  userData?: {
+    _id: string;
+    fullname: string;
+    profilePic?: string;
+  };
+  [key: string]: any;
+}
+
+interface SearchResult {
+  users: User[];
+  posts: Post[];
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: {
+      users: number;
+      posts: number;
+    };
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
 const SearchResults = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [posts, setPosts] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult>({
+    users: [],
+    posts: [],
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"posts" | "users">("posts");
   const { user: currentUser } = useSelector(
@@ -19,7 +55,6 @@ const SearchResults = () => {
   );
   const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
 
-  // Lấy search term từ URL query params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const query = params.get("q");
@@ -30,28 +65,50 @@ const SearchResults = () => {
   }, [location.search]);
 
   const performSearch = async (query: string) => {
+    if (!query.trim()) return;
+
     setIsLoading(true);
     try {
-      const encoded = encodeURIComponent(query);
-      const response = await axios.get(
-        `http://localhost:3000/search?q=${encoded}`
-      );
+      const data = await searchApi(query);
 
-      if (response.data) {
-        // Lấy kết quả bài viết
-        const postsData = Array.isArray(response.data.posts)
-          ? response.data.posts
-          : [];
-        setPosts(postsData);
-
-        // Lấy kết quả người dùng
-        const usersData = Array.isArray(response.data.users)
-          ? response.data.users
-          : [];
-        setUsers(usersData);
+      if (!data) {
+        setSearchResults({ users: [], posts: [] });
+        return;
       }
+
+      const usersData: User[] = Array.isArray(data.users)
+        ? data.users.map((user: User) => ({
+            _id: user._id,
+            fullname: user.fullname || "User",
+            profilePic: user.profilePic,
+            occupation: user.occupation,
+            friends: user.friends || [],
+          }))
+        : [];
+
+      const postsData: Post[] = Array.isArray(data.posts)
+        ? data.posts.map((post: Post) => ({
+            ...post,
+            content:
+              typeof post.content === "string" ? post.content : "No content",
+            userData: post.userData
+              ? {
+                  _id: post.userData._id,
+                  fullname: post.userData.fullname || "User",
+                  profilePic: post.userData.profilePic,
+                }
+              : undefined,
+          }))
+        : [];
+
+      setSearchResults({
+        users: usersData,
+        posts: postsData,
+        pagination: data.pagination,
+      });
     } catch (error) {
-      console.error("Lỗi tìm kiếm:", error);
+      console.error("Search error:", error);
+      setSearchResults({ users: [], posts: [] });
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +141,7 @@ const SearchResults = () => {
               }`}
               onClick={() => setActiveTab("posts")}
             >
-              Bài viết ({posts.length})
+              Bài viết ({searchResults.posts.length})
             </button>
             <button
               className={`px-4 py-2 font-medium ${
@@ -94,7 +151,7 @@ const SearchResults = () => {
               }`}
               onClick={() => setActiveTab("users")}
             >
-              Người dùng ({users.length})
+              Người dùng ({searchResults.users.length})
             </button>
           </div>
 
@@ -106,13 +163,13 @@ const SearchResults = () => {
             <>
               {activeTab === "posts" && (
                 <div className="space-y-6 gap-4 mb-2">
-                  {posts.length > 0 ? (
-                    posts.map((post) => <Post key={post._id} data={post} />)
+                  {searchResults.posts.length > 0 ? (
+                    searchResults.posts.map((post) => (
+                      <Post key={post._id} data={post} />
+                    ))
                   ) : (
                     <div className="text-center py-8 bg-gray-50 rounded-lg">
-                      <p className="text-gray-500">
-                        Không tìm thấy bài viết nào phù hợp.
-                      </p>
+                      <p className="text-gray-500">No posts found.</p>
                     </div>
                   )}
                 </div>
@@ -120,8 +177,8 @@ const SearchResults = () => {
 
               {activeTab === "users" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {users.length > 0 ? (
-                    users.map((user) => (
+                  {searchResults.users.length > 0 ? (
+                    searchResults.users.map((user) => (
                       <div
                         key={user._id}
                         className="flex items-center p-4 bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer"
@@ -161,9 +218,7 @@ const SearchResults = () => {
                     ))
                   ) : (
                     <div className="text-center py-8 bg-gray-50 rounded-lg col-span-2">
-                      <p className="text-gray-500">
-                        Không tìm thấy người dùng nào phù hợp.
-                      </p>
+                      <p className="text-gray-500">No users found.</p>
                     </div>
                   )}
                 </div>

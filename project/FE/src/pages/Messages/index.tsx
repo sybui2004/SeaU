@@ -4,12 +4,16 @@ import Sidebar from "@/components/layout/Sidebar";
 import { useSelector } from "react-redux";
 import { io } from "socket.io-client";
 import {
-  getAllConversations,
+  getUserConversations,
   findConversation,
   createConversation,
+  createGroupChat,
 } from "@/api/ConversationRequest";
+import { getFriendsList } from "@/api/UserRequest";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import searchIcon from "@assets/images/icon-search.png";
+import { Button } from "@/components/ui/button";
+import { User, X, Users } from "lucide-react";
 
 function Messages() {
   const navigate = useNavigate();
@@ -33,59 +37,55 @@ function Messages() {
   const [searchText, setSearchText] = useState("");
   const [isHovered, setIsHovered] = useState(false);
 
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [selectedFriends, setSelectedFriends] = useState<any[]>([]);
+  const [availableFriends, setAvailableFriends] = useState<any[]>([]);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [friendSearchQuery, setFriendSearchQuery] = useState("");
+
   console.log("Current chat:", currentChat);
 
-  // Lưu currentChat vào localStorage khi thay đổi
   useEffect(() => {
     if (currentChat) {
       localStorage.setItem("currentChatId", currentChat._id);
     }
   }, [currentChat]);
 
-  // Get the chat in chat section
   useEffect(() => {
     const getChats = async () => {
       setIsLoading(true);
       try {
-        const response = await getAllConversations(user._id);
+        const response = await getUserConversations(user._id);
         const { data } = response;
 
-        // Kiểm tra nếu dữ liệu có cấu trúc mới (có conversations và pagination)
         if (data && data.conversations) {
           setChats(data.conversations);
-
-          // Khôi phục chat đã chọn trước đó (sau khi danh sách chat đã được tải)
           const savedChatId = localStorage.getItem("currentChatId");
           if (savedChatId) {
             const savedChat = data.conversations.find(
               (chat: any) => chat._id === savedChatId
             );
             if (savedChat) {
-              console.log("Khôi phục cuộc trò chuyện đã lưu:", savedChat);
               setCurrentChat(savedChat);
             }
           }
         } else if (Array.isArray(data)) {
-          // Xử lý trường hợp API trả về mảng trực tiếp (tương thích ngược)
           setChats(data);
 
-          // Khôi phục chat đã chọn trước đó (sau khi danh sách chat đã được tải)
           const savedChatId = localStorage.getItem("currentChatId");
           if (savedChatId) {
             const savedChat = data.find(
               (chat: any) => chat._id === savedChatId
             );
             if (savedChat) {
-              console.log("Khôi phục cuộc trò chuyện đã lưu:", savedChat);
               setCurrentChat(savedChat);
             }
           }
         } else {
-          console.error("Định dạng dữ liệu không hợp lệ:", data);
           setChats([]);
         }
       } catch (error) {
-        console.log("Lỗi khi lấy cuộc trò chuyện:", error);
         setChats([]);
       } finally {
         setIsLoading(false);
@@ -97,34 +97,46 @@ function Messages() {
     }
   }, [user?._id]);
 
-  // Handle opening chat with specific user from URL
   useEffect(() => {
     const openChatWithUser = async () => {
       if (!targetUserId || !user?._id || targetUserId === user._id) return;
 
       try {
-        // First check if conversation already exists
         const { data } = await findConversation(user._id, targetUserId);
 
         if (data) {
-          // Conversation exists, set it as current chat
+          if (
+            !data._id ||
+            !data.members ||
+            (Array.isArray(data.members) && data.members.length < 2)
+          ) {
+            return;
+          }
+
           setCurrentChat(data);
         } else {
-          // Create new conversation
-          const newConversation = {
-            senderId: user._id,
-            receiverId: targetUserId,
-          };
+          const result = await createConversation(user._id, targetUserId);
+          if (result.data && result.data._id) {
+            if (
+              !result.data.members ||
+              (Array.isArray(result.data.members) &&
+                result.data.members.length < 2)
+            ) {
+              return;
+            }
 
-          const result = await createConversation(newConversation);
-          if (result.data) {
+            console.log("New conversation created:", result.data);
             setCurrentChat(result.data);
-            // Update chats list
+
             setChats((prev) => [result.data, ...prev]);
+          } else {
+            console.error(
+              "Failed to create conversation, invalid data:",
+              result
+            );
           }
         }
 
-        // Remove the userId parameter from URL to prevent reopening on refresh
         navigate("/message", { replace: true });
       } catch (error) {
         console.error("Error opening chat with user:", error);
@@ -141,24 +153,20 @@ function Messages() {
     if (!user?._id) return;
 
     try {
-      // Clear previous socket if exists
       if (socket.current) {
         socket.current.disconnect();
       }
 
       setSocketError(null);
 
-      // Thêm timeout dài hơn và thử lại kết nối
       socket.current = io("http://localhost:8800", {
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
-        timeout: 20000, // Tăng timeout lên 20 giây
-        transports: ["websocket", "polling"], // Thêm polling để fallback
+        timeout: 20000,
+        transports: ["websocket", "polling"],
       });
 
-      // Handle connection events
       socket.current.on("connect", () => {
-        console.log("Socket kết nối thành công");
         setSocketConnected(true);
         socket.current.emit("new-user-add", user._id);
       });
@@ -166,7 +174,7 @@ function Messages() {
       socket.current.on("connect_error", (err: any) => {
         console.error("Lỗi kết nối socket:", err);
         setSocketError(
-          "Không thể kết nối đến máy chủ chat. Vui lòng thử lại sau."
+          "Cannot connect to chat server. Please try again later."
         );
         setSocketConnected(false);
       });
@@ -179,41 +187,13 @@ function Messages() {
         setOnlineUsers(users);
       });
 
-      // Clean up on unmount
-      return () => {
-        if (socket.current) {
-          socket.current.disconnect();
-        }
-      };
-    } catch (error) {
-      console.error("Lỗi khởi tạo socket:", error);
-      setSocketError(
-        "Không thể khởi tạo kết nối chat. Vui lòng làm mới trang."
-      );
-      setSocketConnected(false);
-    }
-  }, [user?._id]);
-
-  // Send Message to socket server
-  useEffect(() => {
-    if (sendMessage !== null && socket.current && socketConnected) {
-      socket.current.emit("send-message", sendMessage);
-    }
-  }, [sendMessage, socketConnected]);
-
-  // Get the message from socket server
-  useEffect(() => {
-    if (socket.current) {
       socket.current.on("receive-message", (data: any) => {
         console.log("Received message:", data);
         setReceivedMessage(data);
 
-        // Cập nhật tin nhắn mới nhất và sắp xếp lại danh sách cuộc trò chuyện
         setChats((prevChats) => {
-          // Tìm cuộc trò chuyện cần cập nhật
           const updatedChats = prevChats.map((chat) => {
             if (chat._id === data.chatId) {
-              // Cập nhật tin nhắn mới nhất
               return {
                 ...chat,
                 lastMessage: {
@@ -227,7 +207,6 @@ function Messages() {
             return chat;
           });
 
-          // Sắp xếp lại với cuộc trò chuyện có tin nhắn mới nhất lên đầu
           return [...updatedChats].sort((a, b) => {
             const timeA = a.lastMessage?.createdAt
               ? new Date(a.lastMessage.createdAt).getTime()
@@ -239,14 +218,43 @@ function Messages() {
           });
         });
       });
-    }
 
-    return () => {
-      if (socket.current) {
-        socket.current.off("receive-message");
-      }
-    };
-  }, [socket.current, currentChat]);
+      socket.current.on("new-group-chat", (data: any) => {
+        console.log("Nhận thông báo nhóm chat mới:", data);
+
+        setChats((prevChats) => {
+          const chatExists = prevChats.some(
+            (chat) => chat._id === data.groupChat._id
+          );
+          if (chatExists) {
+            return prevChats;
+          }
+
+          return [data.groupChat, ...prevChats];
+        });
+      });
+
+      return () => {
+        if (socket.current) {
+          socket.current.disconnect();
+          socket.current.off("receive-message");
+          socket.current.off("new-group-chat");
+        }
+      };
+    } catch (error) {
+      console.error("Error:", error);
+      setSocketError(
+        "Cannot initialize chat connection. Please refresh the page."
+      );
+      setSocketConnected(false);
+    }
+  }, [user?._id]);
+
+  useEffect(() => {
+    if (sendMessage !== null && socket.current && socketConnected) {
+      socket.current.emit("send-message", sendMessage);
+    }
+  }, [sendMessage, socketConnected]);
 
   const checkOnlineStatus = (chat: any) => {
     const chatMember = chat.members.find((member: any) => member !== user._id);
@@ -254,16 +262,31 @@ function Messages() {
     return online ? true : false;
   };
 
-  // Xử lý click vào cuộc trò chuyện
   const handleChatClick = (chat: any) => {
+    if (
+      !chat._id ||
+      !chat.members ||
+      (Array.isArray(chat.members) && chat.members.length < 2)
+    ) {
+      console.error("Cannot open invalid conversation:", chat);
+      return;
+    }
+
     console.log("Chat clicked:", chat);
     setCurrentChat(chat);
     localStorage.setItem("currentChatId", chat._id);
   };
 
-  // Lọc cuộc trò chuyện theo tab và tìm kiếm
   const filteredChats = chats.filter((chat) => {
-    // Lọc theo tab
+    if (
+      !chat._id ||
+      !chat.members ||
+      (Array.isArray(chat.members) && chat.members.length < 2)
+    ) {
+      console.warn("Skipping invalid conversation:", chat);
+      return false;
+    }
+
     const tabMatch =
       selectedTab === "all"
         ? true
@@ -271,10 +294,8 @@ function Messages() {
         ? !chat.isGroupChat
         : chat.isGroupChat;
 
-    // Lọc theo tìm kiếm
     if (!searchText) return tabMatch;
 
-    // Tìm kiếm trong tên nhóm nếu là nhóm
     if (chat.isGroupChat && chat.groupName) {
       return (
         chat.groupName.toLowerCase().includes(searchText.toLowerCase()) &&
@@ -282,18 +303,89 @@ function Messages() {
       );
     }
 
-    // Không có thông tin để tìm kiếm
     return tabMatch;
   });
+
+  useEffect(() => {
+    const fetchFriends = async () => {
+      if (!user?._id) return;
+
+      try {
+        const response = await getFriendsList(user._id, 1, 100);
+        if (response.data && response.data.friends) {
+          setAvailableFriends(response.data.friends);
+        }
+      } catch (error) {
+        console.error("Error fetching friends list:", error);
+      }
+    };
+
+    if (showCreateGroup) {
+      fetchFriends();
+    }
+  }, [user?._id, showCreateGroup]);
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedFriends.length < 2) {
+      alert("Please enter a group name and select at least 2 friends");
+      return;
+    }
+
+    setIsCreatingGroup(true);
+    try {
+      const memberIds = [
+        user._id,
+        ...selectedFriends.map((friend) => friend._id),
+      ];
+
+      const response = await createGroupChat(groupName, memberIds, user._id);
+
+      if (response.data && response.data.groupChat) {
+        setChats((prev) => [response.data.groupChat, ...prev]);
+
+        setCurrentChat(response.data.groupChat);
+        localStorage.setItem("currentChatId", response.data.groupChat._id);
+
+        setGroupName("");
+        setSelectedFriends([]);
+        setShowCreateGroup(false);
+        if (socket.current && socketConnected) {
+          selectedFriends.forEach((friend) => {
+            socket.current.emit("new-group-chat", {
+              groupChat: response.data.groupChat,
+              receiverId: friend._id,
+              creatorId: user._id,
+            });
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error creating group chat:", error);
+      alert("Cannot create group chat. Please try again later.");
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
+  const toggleSelectFriend = (friend: any) => {
+    if (selectedFriends.some((f) => f._id === friend._id)) {
+      setSelectedFriends((prev) => prev.filter((f) => f._id !== friend._id));
+    } else {
+      setSelectedFriends((prev) => [...prev, friend]);
+    }
+  };
+
+  const filteredFriends = availableFriends.filter((friend) =>
+    friend.fullname.toLowerCase().includes(friendSearchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex w-full min-h-screen">
       <Sidebar />
       <div className="fixed flex ml-20 w-[calc(100%-80px)] h-[100vh]">
-        {/* Danh sách cuộc trò chuyện */}
         <div className="w-1/4 border-r flex flex-col h-full">
           <div className="font-bold text-zinc-900 text-2xl tracking-tight py-3 px-4 border-b">
-            Tin nhắn
+            Message
           </div>
 
           {socketError && (
@@ -302,7 +394,6 @@ function Messages() {
             </div>
           )}
 
-          {/* Thanh tìm kiếm */}
           <div className="px-2 pt-2">
             <div
               className={`flex overflow-hidden items-center w-full h-10 px-3 leading-none rounded-xl border border-solid bg-zinc-100 transition-all duration-300 ${
@@ -328,7 +419,16 @@ function Messages() {
             </div>
           </div>
 
-          {/* Chat filter tabs */}
+          <div className="px-2 pt-2">
+            <Button
+              onClick={() => setShowCreateGroup(true)}
+              variant="gradientCustom"
+              className="w-full text-white shadow-md transition-all duration-300"
+            >
+              <Users className="mr-2 h-4 w-4" /> Create group chat
+            </Button>
+          </div>
+
           <div className="flex mt-2 border-b bg-[#F0F0F0] h-12  rounded-t-[20px] rounded-b-[20px]  mx-2">
             <button
               className={`flex-1 h-full text-sm transition-all duration-300 hover:bg-[#DCDCDC] rounded-[20px] ${
@@ -362,8 +462,7 @@ function Messages() {
             </button>
           </div>
 
-          {/* Khung cuộn cho danh sách chat */}
-          <div className="flex-1 overflow-y-auto pb-4">
+          <div className="flex-1 overflow-y-auto pb-4 custom-scrollbar">
             {isLoading ? (
               <div className="flex justify-center items-center h-20">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -397,7 +496,6 @@ function Messages() {
           </div>
         </div>
 
-        {/* Phần chat chính */}
         <div className="flex-1 h-full overflow-hidden">
           {currentChat ? (
             <ChatMain
@@ -435,6 +533,140 @@ function Messages() {
           )}
         </div>
       </div>
+
+      {showCreateGroup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-md p-5 relative max-h-[80vh] flex flex-col">
+            <button
+              onClick={() => setShowCreateGroup(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+              aria-label="Đóng"
+            >
+              <X size={20} />
+            </button>
+
+            <h2 className="text-xl font-bold mb-4 text-center">
+              Create group chat
+            </h2>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Group name
+              </label>
+              <input
+                type="text"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="Nhập tên nhóm..."
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Selected members ({selectedFriends.length})
+              </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedFriends.map((friend) => (
+                  <div
+                    key={friend._id}
+                    className="flex items-center bg-blue-100 px-2 py-1 rounded-full"
+                  >
+                    <span className="text-sm">{friend.fullname}</span>
+                    <button
+                      onClick={() => toggleSelectFriend(friend)}
+                      className="ml-1 text-red-500 hover:text-red-700"
+                      aria-label={`Xóa ${friend.fullname}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                {selectedFriends.length === 0 && (
+                  <p className="text-sm text-gray-500">
+                    Select at least 2 friends to create a group
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select friends
+              </label>
+              <input
+                type="text"
+                value={friendSearchQuery}
+                onChange={(e) => setFriendSearchQuery(e.target.value)}
+                placeholder="Search friends..."
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+              />
+            </div>
+
+            <div className="overflow-y-auto flex-1 border border-gray-200 rounded-md">
+              {filteredFriends.length > 0 ? (
+                filteredFriends.map((friend) => (
+                  <div
+                    key={friend._id}
+                    className={`flex items-center p-2 cursor-pointer hover:bg-gray-50 ${
+                      selectedFriends.some((f) => f._id === friend._id)
+                        ? "bg-blue-50"
+                        : ""
+                    }`}
+                    onClick={() => toggleSelectFriend(friend)}
+                  >
+                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden mr-2">
+                      {friend.profilePic ? (
+                        <img
+                          src={`${import.meta.env.VITE_PUBLIC_FOLDER}${
+                            friend.profilePic
+                          }`}
+                          alt={friend.fullname}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User size={18} className="text-gray-500" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{friend.fullname}</p>
+                      {friend.occupation && (
+                        <p className="text-xs text-gray-500">
+                          {friend.occupation}
+                        </p>
+                      )}
+                    </div>
+                    <div className="w-5 h-5 border border-gray-300 rounded-sm flex items-center justify-center">
+                      {selectedFriends.some((f) => f._id === friend._id) && (
+                        <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-gray-500">
+                  {friendSearchQuery
+                    ? "No friends found"
+                    : "You don't have any friends"}
+                </div>
+              )}
+            </div>
+
+            <Button
+              onClick={handleCreateGroup}
+              disabled={
+                groupName.trim() === "" ||
+                selectedFriends.length < 2 ||
+                isCreatingGroup
+              }
+              variant="gradientCustom"
+              className="mt-4 w-full text-white shadow-md transition-all duration-300 disabled:opacity-50"
+            >
+              {isCreatingGroup ? "Creating..." : "Create group chat"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

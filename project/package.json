@@ -3,11 +3,14 @@
     "bcrypt": "^5.1.1",
     "mongodb": "^6.15.0",
     "mongoose": "^8.13.0",
+    "multer": "^1.4.5-lts.2",
+    "react-file-icon": "^1.6.0",
     "react-input-emoji": "^5.9.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/react-file-icon": "^1.0.4",
     "jsonwebtoken": "^9.0.2"
   }
 }

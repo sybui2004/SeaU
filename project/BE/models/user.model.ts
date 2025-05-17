@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
     dob: {
-      type: Date, // YYYY-MM-DD
+      type: Date,
       required: false,
       default: null,
     },
@@ -51,13 +51,6 @@ const userSchema = new mongoose.Schema(
     profilePic: {
       type: String,
     },
-    // status: {
-    //   type: String,
-    //   enum: ["active", "inactive", "banned"],
-    //   required: true,
-    //   default: "active",
-    // },
-
     occupation: {
       type: String,
       required: false,
@@ -84,6 +77,14 @@ const userSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -91,7 +92,14 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// userSchema.index({ username: 1 }, { unique: true });
+userSchema.index({ username: 1 }, { unique: true });
+userSchema.index({ email: 1 });
+userSchema.index({ fullname: "text" });
+userSchema.index({ isAdmin: 1 });
+userSchema.index({ isDeleted: 1 });
+userSchema.index({ createdAt: -1 });
+userSchema.index({ isDeleted: 1, createdAt: -1 });
+
 const User = mongoose.model("User", userSchema);
 
 export default User;

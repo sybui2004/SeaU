@@ -1,7 +1,9 @@
 import { FC } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import AdminNotificationBell from "./AdminNotificationBell";
-import ava from "@assets/images/ava.png";
+import { logout } from "@/actions/AuthAction";
+import defaultAvatar from "@assets/images/ava.png";
 
 interface HeaderProps {
   title: string;
@@ -9,9 +11,23 @@ interface HeaderProps {
 
 const Header: FC<HeaderProps> = ({ title }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { authData } = useSelector((state: any) => state.authReducer);
+  const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
 
   const handleLogout = () => {
-    navigate("/");
+    dispatch(logout() as any);
+    navigate("/admin/login");
+  };
+
+  const getImageUrl = (imagePath: string | undefined) => {
+    if (!imagePath) return defaultAvatar;
+
+    if (imagePath.startsWith("/images/")) {
+      return `${serverPublic.replace("/images/", "")}${imagePath}`;
+    }
+
+    return `${serverPublic}${imagePath}`;
   };
 
   return (
@@ -21,8 +37,18 @@ const Header: FC<HeaderProps> = ({ title }) => {
         <AdminNotificationBell />
 
         <div className="flex items-center space-x-2">
-          <img src={ava} alt="Admin" className="w-8 h-8 rounded-full" />
-          <span className="font-medium">Admin</span>
+          <img
+            src={getImageUrl(authData?.user?.profilePic)}
+            alt="Admin"
+            className="w-8 h-8 rounded-full object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = defaultAvatar;
+            }}
+          />
+          <span className="font-medium">
+            {authData?.user?.fullname || "Admin"}
+          </span>
         </div>
         <button
           onClick={handleLogout}

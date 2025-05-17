@@ -1,11 +1,29 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { searchApi } from "@/api/SearchRequest";
 import searchIcon from "@assets/images/icon-search.png";
 
+interface User {
+  _id: string;
+  fullname: string;
+  profilePic?: string;
+  occupation?: string;
+  friends?: string[];
+}
+
+interface Post {
+  _id: string;
+  content: string;
+  userData?: {
+    _id: string;
+    fullname: string;
+    profilePic?: string;
+  };
+}
+
 interface SearchResult {
-  users: any[];
-  posts: any[];
+  users: User[];
+  posts: Post[];
 }
 
 const SearchBar = () => {
@@ -21,7 +39,6 @@ const SearchBar = () => {
   const navigate = useNavigate();
   const serverPublic = import.meta.env.VITE_PUBLIC_FOLDER;
 
-  // Xử lý sự kiện click bên ngoài dropdown kết quả tìm kiếm
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -57,27 +74,38 @@ const SearchBar = () => {
 
     setIsLoading(true);
     try {
-      const encoded = encodeURIComponent(searchQuery);
+      const data = await searchApi(searchQuery);
 
-      const response = await axios.get(
-        `http://localhost:3000/search?q=${encoded}`
-      );
-      console.log("Kết quả API:", response.data);
-
-      // Xử lý dữ liệu
-      let usersData = [];
-      let postsData = [];
-
-      if (response.data && typeof response.data === "object") {
-        if (Array.isArray(response.data.users)) {
-          usersData = response.data.users;
-        }
-        if (Array.isArray(response.data.posts)) {
-          postsData = response.data.posts;
-        }
-      } else if (Array.isArray(response.data)) {
-        usersData = response.data;
+      if (!data) {
+        setSearchResults({ users: [], posts: [] });
+        return;
       }
+
+      const usersData: User[] = Array.isArray(data.users)
+        ? data.users.map((user: User) => ({
+            _id: user._id,
+            fullname: user.fullname || "Người dùng",
+            profilePic: user.profilePic,
+            occupation: user.occupation,
+          }))
+        : [];
+
+      const postsData: Post[] = Array.isArray(data.posts)
+        ? data.posts.map((post: Post) => ({
+            _id: post._id,
+            content:
+              typeof post.content === "string"
+                ? post.content
+                : "Không có nội dung",
+            userData: post.userData
+              ? {
+                  _id: post.userData._id,
+                  fullname: post.userData.fullname || "Người dùng",
+                  profilePic: post.userData.profilePic,
+                }
+              : undefined,
+          }))
+        : [];
 
       console.log(
         `Tìm thấy: ${usersData.length} người dùng, ${postsData.length} bài viết`
@@ -91,6 +119,7 @@ const SearchBar = () => {
       setShowResults(true);
     } catch (error) {
       console.error("Lỗi tìm kiếm:", error);
+      setSearchResults({ users: [], posts: [] });
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +165,7 @@ const SearchBar = () => {
         </div>
       </div>
 
-      {/* Dropdown kết quả tìm kiếm */}
+      {/* Dropdown Search Results */}
       {showResults && (
         <div className="absolute top-12 left-0 w-full bg-white rounded-xl shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-[9999] custom-scrollbar">
           {isLoading ? (
@@ -152,7 +181,7 @@ const SearchBar = () => {
                 </div>
               ) : (
                 <div>
-                  {/* Kết quả người dùng */}
+                  {/* User Results */}
                   {searchResults.users && searchResults.users.length > 0 && (
                     <div className="border-b border-gray-100">
                       <div className="p-2 bg-gray-50 font-semibold text-sm text-gray-700">
@@ -190,7 +219,7 @@ const SearchBar = () => {
                     </div>
                   )}
 
-                  {/* Kết quả bài viết */}
+                  {/* Post Results */}
                   {searchResults.posts && searchResults.posts.length > 0 && (
                     <div>
                       <div className="p-2 bg-gray-50 font-semibold text-sm text-gray-700">
@@ -242,7 +271,7 @@ const SearchBar = () => {
                     className="text-blue-500 hover:text-blue-700 font-medium"
                     onClick={handleViewAllResults}
                   >
-                    Xem tất cả kết quả
+                    View all results
                   </button>
                 </div>
               )}

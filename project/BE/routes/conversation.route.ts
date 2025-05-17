@@ -1,70 +1,47 @@
 import express from "express";
-import * as conversationController from "../controllers/conversation.controller";
+import {
+  addToGroup,
+  createConversation,
+  createGroupChat,
+  deleteConversation,
+  deleteConversationAsAdmin,
+  findConversation,
+  getConversation,
+  getConversationDetailsForAdmin,
+  getConversations,
+  getAllConversationsForAdmin,
+  removeFromGroup,
+  updateConversation,
+} from "../controllers/conversation.controller";
 import authMiddleware from "../middleware/auth.middleware";
+import adminMiddleware from "../middleware/admin.middleware";
 import wrap from "./wrap";
 
 const router = express.Router();
 
-// Get all conversations of a user
+// Admin routes
+router.get("/admin/all", adminMiddleware, wrap(getAllConversationsForAdmin));
 router.get(
-  "/:userId",
-  authMiddleware,
-  wrap(conversationController.getConversations)
+  "/admin/:conversationId",
+  adminMiddleware,
+  wrap(getConversationDetailsForAdmin)
 );
-
-// Get conversation by Id
-router.get(
-  "/get/:conversationId",
-  authMiddleware,
-  wrap(conversationController.getConversation)
-);
-
-// Get a conversation between two users
-router.get(
-  "/find/:firstUserId/:secondUserId",
-  wrap(conversationController.findConversation)
-);
-
-// Create a new conversation
-router.post(
-  "/",
-  authMiddleware,
-  wrap(conversationController.createConversation)
-);
-
-// Create a new group chat
-router.post(
-  "/group",
-  authMiddleware,
-  wrap(conversationController.createGroupChat)
-);
-
-// Delete a conversation
 router.delete(
-  "/:conversationId",
-  authMiddleware,
-  wrap(conversationController.deleteConversation)
+  "/admin/:conversationId",
+  adminMiddleware,
+  wrap(deleteConversationAsAdmin)
 );
+// User routes
+router.get("/user/:userId", wrap(getConversations));
+router.get("/:conversationId", wrap(getConversation));
+router.get("/find/:firstUserId/:secondUserId", wrap(findConversation));
 
-// Add a user to a group chat
-router.put(
-  "/group/add",
-  authMiddleware,
-  wrap(conversationController.addToGroup)
-);
-
-// Remove a user from a group chat
-router.put(
-  "/group/remove",
-  authMiddleware,
-  wrap(conversationController.removeFromGroup)
-);
-
-// Update a conversation
-router.put(
-  "/:conversationId",
-  authMiddleware,
-  wrap(conversationController.updateConversation)
-);
+router.use(authMiddleware);
+router.post("/", wrap(createConversation));
+router.post("/group", wrap(createGroupChat));
+router.delete("/:conversationId", wrap(deleteConversation));
+router.put("/addToGroup", wrap(addToGroup));
+router.put("/removeFromGroup", wrap(removeFromGroup));
+router.put("/:conversationId", wrap(updateConversation));
 
 export default router;

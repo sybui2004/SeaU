@@ -8,7 +8,7 @@ export const profileController = {
   // get a User
   getUser: async (req: Request, res: Response) => {
     const id = req.params.id;
-    const { currentUserAdminStatus } = req.body;
+    const { isAdmin } = req.body;
 
     try {
       const user = await User.findById(id).lean();
@@ -16,8 +16,14 @@ export const profileController = {
         res.status(404).json("No such user exists");
         return;
       }
+
+      if (user.isDeleted && !isAdmin) {
+        res.status(410).json("This user account has been deactivated");
+        return;
+      }
+
       const { password, ...otherDetails } = user;
-      if (currentUserAdminStatus) {
+      if (isAdmin) {
         responseUtils.success(res, user);
       } else {
         responseUtils.success(res, otherDetails);
@@ -30,8 +36,8 @@ export const profileController = {
   // update a user
   updateUser: async (req: Request, res: Response) => {
     const id = req.params.id;
-    const { _id, currentUserAdminStatus, password } = req.body;
-    if (id === _id || currentUserAdminStatus) {
+    const { _id, isAdmin, password } = req.body;
+    if (id === _id || isAdmin) {
       try {
         if (password) {
           const salt = await bcrypt.genSalt(10);
@@ -59,11 +65,45 @@ export const profileController = {
   // delete user
   deleteUser: async (req: Request, res: Response) => {
     const id = req.params.id;
-    const { currentUserId, currentUserAdminStatus } = req.body;
-    if (id === currentUserId || currentUserAdminStatus) {
+    const { currentUserId, isAdmin } = req.body;
+    if (id === currentUserId || isAdmin) {
       try {
-        await User.findByIdAndDelete(id);
-        responseUtils.success(res, "User deleted successfully");
+        const user = await User.findById(id);
+        if (!user) {
+          return responseUtils.error(res, "User not found", 404);
+        }
+
+        const originalUserInfo = {
+          _id: user._id,
+          username: user.username,
+          fullname: user.fullname,
+        };
+
+        const anonymizedUser = await User.findByIdAndUpdate(
+          id,
+          {
+            $set: {
+              fullname: "Người dùng SeaU",
+              username: `deleted_user_${Date.now()}`,
+              email: `deleted_${Date.now()}@deleted.sea`,
+              bio: "",
+              profilePic: "defaultProfile.png",
+              isDeleted: true,
+              deletedAt: new Date(),
+            },
+          },
+          { new: true, select: "-password" }
+        );
+
+        if (!anonymizedUser) {
+          return responseUtils.error(
+            res,
+            "Failed to anonymize user account",
+            500
+          );
+        }
+
+        responseUtils.success(res, "User has been soft deleted successfully");
       } catch (error) {
         responseUtils.error(res, "Delete user failed. Please try again.");
       }

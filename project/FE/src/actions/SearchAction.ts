@@ -1,6 +1,5 @@
 import { searchApi } from "@/api/SearchRequest";
 
-// Action Types
 export const SEARCH_START = "SEARCH_START";
 export const SEARCH_SUCCESS = "SEARCH_SUCCESS";
 export const SEARCH_FAIL = "SEARCH_FAIL";
@@ -8,7 +7,6 @@ export const LOAD_MORE_SUCCESS = "LOAD_MORE_SUCCESS";
 export const SET_SEARCH_TERM = "SET_SEARCH_TERM";
 export const CLEAR_SEARCH = "CLEAR_SEARCH";
 
-// Action Creators
 export const performSearch =
   (query: string, page: number = 1) =>
   async (dispatch: any) => {

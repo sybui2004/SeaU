@@ -26,7 +26,6 @@ export const adminLogIn = (formData: any) => async (dispatch: any) => {
   dispatch({ type: "AUTH_START" });
   try {
     const { data } = await AuthApi.adminLogin(formData);
-    // Kiểm tra vai trò admin
     if (!data.user.isAdmin) {
       dispatch({ type: "AUTH_FAIL" });
       return;

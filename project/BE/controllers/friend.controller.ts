@@ -1,6 +1,7 @@
 import User from "../models/user.model";
 import { Request, Response } from "express";
 import { responseUtils } from "../utils/response.utils";
+
 export const friendController = {
   // Send friend request
   sendFriendRequest: async (req: Request, res: Response) => {

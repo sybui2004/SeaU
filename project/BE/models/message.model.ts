@@ -14,7 +14,7 @@ const messageSchema = new mongoose.Schema(
     },
     text: {
       type: String,
-      required: true,
+      default: "",
     },
     isDeleted: {
       type: Boolean,
@@ -24,19 +24,39 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    attachments: {
-      type: [String],
-      default: [],
+    originalText: {
+      type: String,
     },
+    fileType: {
+      type: String,
+      enum: ["image", "audio", "video", "other", null],
+      default: null,
+    },
+    fileData: {
+      type: String,
+    },
+    fileName: {
+      type: String,
+    },
+    fileSize: {
+      type: Number,
+    },
+    isReadBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-// messageSchema.virtual("isUnread").get(function (this: IMessage) {
-//   return this.readBy.length === 0;
-// });
+messageSchema.index({ conversationId: 1, createdAt: 1 });
+messageSchema.index({ senderId: 1 });
+messageSchema.index({ isDeleted: 1 });
+messageSchema.index({ text: "text" });
+messageSchema.index({ conversationId: 1, senderId: 1, createdAt: -1 });
+messageSchema.index({ fileType: 1 });
 
 const Message = mongoose.model("Message", messageSchema);
 

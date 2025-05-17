@@ -5,8 +5,14 @@ import wrap from "./wrap";
 
 const router = express.Router();
 
+// Admin route to get all comments by a user
+router.get(
+  "/admin/user/:userId",
+  wrap(commentController.getAllCommentsByUserForAdmin)
+);
+
 // Get all comments of a post
-router.get("/:postId", wrap(commentController.getCommentsByPostId));
+router.get("/post/:postId", wrap(commentController.getCommentsByPostId));
 
 // Get a comment by id
 router.get("/get/:commentId", wrap(commentController.getCommentById));
@@ -17,35 +23,20 @@ router.get(
   wrap(commentController.getRepliesByCommentId)
 );
 
+router.use(authMiddleware);
 // Create new comment
-router.post("/", authMiddleware, wrap(commentController.createComment));
+router.post("/", wrap(commentController.createComment));
 
 // Update comment
-router.put(
-  "/:commentId",
-  authMiddleware,
-  wrap(commentController.updateComment)
-);
+router.put("/:commentId", wrap(commentController.updateComment));
 
 // Delete comment
-router.delete(
-  "/:commentId",
-  authMiddleware,
-  wrap(commentController.deleteComment)
-);
+router.delete("/:commentId", wrap(commentController.deleteComment));
 
 // Like/unlike comment
-router.put(
-  "/:commentId/like",
-  authMiddleware,
-  wrap(commentController.likeComment)
-);
+router.put("/:commentId/like", wrap(commentController.likeComment));
 
 // Create reply for comment
-router.post(
-  "/:commentId/reply",
-  authMiddleware,
-  wrap(commentController.createReply)
-);
+router.post("/:commentId/reply", wrap(commentController.createReply));
 
 export default router;

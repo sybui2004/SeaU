@@ -1,32 +1,37 @@
 import express from "express";
-import * as messageController from "../controllers/message.controller";
+import {
+  getMessages,
+  createMessage,
+  updateMessage,
+  deleteMessage,
+  getAllMessagesForAdmin,
+  updateMessageAsAdmin,
+  deleteMessageAsAdmin,
+  getMessagesByUserId,
+} from "../controllers/message.controller";
 import authMiddleware from "../middleware/auth.middleware";
+import adminMiddleware from "../middleware/admin.middleware";
 import wrap from "./wrap";
 
 const router = express.Router();
 
-// Get all messages of a conversation
+// User routes
+router.get("/user/:userId", authMiddleware, wrap(getMessagesByUserId));
+router.get("/:conversationId", wrap(getMessages));
+
+// Admin routes
 router.get(
-  "/:conversationId",
-  authMiddleware,
-  wrap(messageController.getMessages)
+  "/admin/:conversationId",
+  adminMiddleware,
+  wrap(getAllMessagesForAdmin)
 );
 
-// Create a new message
-router.post("/", authMiddleware, wrap(messageController.createMessage));
+router.use(authMiddleware);
 
-// Update a message
-router.put(
-  "/:messageId",
-  authMiddleware,
-  wrap(messageController.updateMessage)
-);
-
-// Delete a message
-router.delete(
-  "/:messageId",
-  authMiddleware,
-  wrap(messageController.deleteMessage)
-);
+router.post("/", wrap(createMessage));
+router.put("/:messageId", wrap(updateMessage));
+router.delete("/:messageId", wrap(deleteMessage));
+router.put("/admin/:messageId", adminMiddleware, wrap(updateMessageAsAdmin));
+router.delete("/admin/:messageId", adminMiddleware, wrap(deleteMessageAsAdmin));
 
 export default router;

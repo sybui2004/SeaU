@@ -15,7 +15,7 @@ const FriendsList = () => {
   const params = useParams();
   const userId = params.id;
   const queryParams = new URLSearchParams(location.search);
-  const listType = queryParams.get("type") || "all"; // all hoặc mutual
+  const listType = queryParams.get("type") || "all";
 
   const { user: currentUser } = useSelector(
     (state: any) => state.authReducer.authData
@@ -31,7 +31,6 @@ const FriendsList = () => {
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
 
-  // Fetch user info
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
@@ -47,7 +46,6 @@ const FriendsList = () => {
     fetchUserInfo();
   }, [userId]);
 
-  // Fetch friends list
   useEffect(() => {
     const fetchFriends = async () => {
       if (!userInfo) return;

@@ -1,6 +1,5 @@
 import * as NotificationApi from "../api/NotificationRequest";
 
-// Define types for actions
 type ThunkAction = (dispatch: any) => Promise<void>;
 
 export const getNotifications = (userId: string): ThunkAction => {

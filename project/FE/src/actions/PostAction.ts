@@ -11,7 +11,7 @@ export const getTimelinePost = (
       type: isLoadMore ? "RETREIVING_MORE_START" : "RETREIVING_START",
     });
     try {
-      const { data } = await PostApi.getTimelinePost(id, page, limit);
+      const { data } = await PostApi.getTimelinePosts(id, page, limit);
       dispatch({
         type: isLoadMore ? "RETREIVING_MORE_SUCCESS" : "RETREIVING_SUCCESS",
         data: data,
@@ -40,7 +40,7 @@ export const likePost = (postId: string, userId: string) => {
   return async (dispatch: any) => {
     try {
       await PostApi.likePost(postId, userId);
-      dispatch({ type: "LIKE_POST_SUCCESS", data: postId });
+      dispatch({ type: "LIKE_POST_SUCCESS", data: postId, userId: userId });
     } catch (error) {
       dispatch({ type: "LIKE_POST_FAIL" });
       console.log(error);

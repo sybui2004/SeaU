@@ -2,20 +2,18 @@ import { useState } from "react";
 import ava from "@assets/images/ava.png";
 import sentIcon from "@assets/images/icon-sent.png";
 import { Button } from "@/components/ui/button";
-// Common interface for user
 interface User {
   name: string;
   avatar: string;
 }
 
-// Interface for a comment or reply (they share the same structure)
 interface CommentItem {
   id: number;
   user: User;
   text: string;
   timestamp: string;
-  parentId: number | null; // null for top-level comments, otherwise points to parent comment/reply
-  replies: number[]; // Array of IDs that are replies to this comment
+  parentId: number | null;
+  replies: number[];
 }
 
 const CommentBox = () => {
@@ -25,7 +23,6 @@ const CommentBox = () => {
   const [showAllComments, setShowAllComments] = useState(false);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
 
-  // Store all comments and replies in a flat structure with parent-child relationships
   const [commentItems, setCommentItems] = useState<Record<number, CommentItem>>(
     {
       1: {
@@ -75,15 +72,12 @@ const CommentBox = () => {
     }
   );
 
-  // Get top-level comments (those with parentId = null)
   const topLevelComments = Object.values(commentItems).filter(
     (item) => item.parentId === null
   );
 
-  // Số bình luận hiển thị khi đóng
   const PREVIEW_COMMENT_COUNT = 3;
 
-  // Lấy danh sách bình luận hiển thị dựa vào trạng thái
   const visibleComments = showAllComments
     ? topLevelComments
     : topLevelComments.slice(0, PREVIEW_COMMENT_COUNT);
@@ -122,7 +116,6 @@ const CommentBox = () => {
   };
 
   const handleReplyClick = (commentId: number) => {
-    // Toggle reply input - if already replying to this comment, cancel it
     setReplyingTo(replyingTo === commentId ? null : commentId);
     setReplyText("");
   };
@@ -142,13 +135,11 @@ const CommentBox = () => {
         replies: [],
       };
 
-      // Add the new reply to the items collection
       const updatedItems = {
         ...commentItems,
         [newId]: newReply,
       };
 
-      // Update the parent's replies array
       updatedItems[parentCommentId] = {
         ...updatedItems[parentCommentId],
         replies: [...updatedItems[parentCommentId].replies, newId],
@@ -266,7 +257,6 @@ const CommentBox = () => {
           </div>
         )}
 
-        {/* Replies - only render if depth is less than max and there are replies */}
         {depth < maxDepth && comment.replies.length > 0 && (
           <div
             className={`${getIndentClass(

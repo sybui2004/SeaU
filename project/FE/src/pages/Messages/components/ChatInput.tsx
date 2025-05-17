@@ -1,8 +1,14 @@
-// src/components/ChatInput.tsx
-import React, { useState, useRef, Dispatch, SetStateAction } from "react";
+import React, {
+  useState,
+  useRef,
+  Dispatch,
+  SetStateAction,
+  useEffect,
+} from "react";
 import { BsEmojiSmile } from "react-icons/bs";
-import { FaFileUpload, FaMicrophone } from "react-icons/fa";
+import { FaFileUpload, FaMicrophone, FaStop } from "react-icons/fa";
 import EmojiPicker from "emoji-picker-react";
+import { Progress } from "@/components/ui/progress";
 
 interface ChatInputProps {
   message: string;
@@ -13,6 +19,8 @@ interface ChatInputProps {
     SetStateAction<{ addMember: boolean; chatMessage: boolean }>
   >;
   className?: string;
+  onFileSelected?: (file: File) => void;
+  onVoiceRecorded?: (audioBlob: Blob) => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -22,60 +30,157 @@ const ChatInput: React.FC<ChatInputProps> = ({
   isHovered,
   setIsHovered,
   className,
+  onFileSelected,
+  onVoiceRecorded,
 }) => {
-  // Thêm state cho các tính năng
   const [showEmoji, setShowEmoji] = useState<boolean>(false);
   const [file, setFile] = useState<File | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [recordingTime, setRecordingTime] = useState<number>(0);
+  const [recordingProgress, setRecordingProgress] = useState<number>(0);
 
-  // Xử lý chọn file
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files && e.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
+      if (onFileSelected) {
+        onFileSelected(selectedFile);
+      }
     }
   };
 
-  // Xử lý gửi tin nhắn khi nhấn Enter
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
-      // Xóa file sau khi gửi
       setFile(null);
     }
   };
 
-  // Mở dialog chọn file
   const handleOpenFileDialog = () => {
     fileInputRef.current?.click();
   };
 
-  // Xử lý ghi âm
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    // Ở đây thường sẽ có logic ghi âm thực tế
-    if (isRecording) {
-      // Logic dừng ghi âm
-      console.log("Dừng ghi âm");
-    } else {
-      // Logic bắt đầu ghi âm
-      console.log("Bắt đầu ghi âm");
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/mp3",
+        });
+        if (onVoiceRecorded) {
+          onVoiceRecorded(audioBlob);
+        }
+
+        stream.getTracks().forEach((track) => track.stop());
+
+        setRecordingTime(0);
+        setRecordingProgress(0);
+
+        setTimeout(() => {
+          handleSend();
+        }, 500);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => {
+          const newTime = prev + 1;
+          const progress = (newTime / 60) * 100;
+          setRecordingProgress(Math.min(progress, 100));
+
+          if (newTime >= 60) {
+            stopRecording();
+          }
+          return newTime;
+        });
+      }, 1000);
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      alert("Cannot access microphone. Please check your access permissions.");
     }
   };
 
-  // Xử lý khi click vào nút gửi
+  const stopRecording = () => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
   const onSend = () => {
     handleSend();
     setFile(null);
     setShowEmoji(false);
   };
 
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   return (
     <div className={`p-4 ${className || ""}`}>
+      {isRecording && (
+        <div className="mb-2 p-2 bg-red-50 rounded-lg flex flex-col">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-red-500 font-medium">Recording...</span>
+            <span className="text-sm text-gray-600">
+              {formatRecordingTime(recordingTime)}
+            </span>
+          </div>
+          <Progress value={recordingProgress} className="h-1 bg-gray-200" />
+        </div>
+      )}
       <div className="flex items-center">
-        {/* Chọn emoji */}
         <div className="relative mr-3">
           <button
             type="button"
@@ -99,8 +204,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
             </div>
           )}
         </div>
-
-        {/* Chọn file */}
         <div className="mr-3">
           <button
             type="button"
@@ -120,8 +223,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
             title="Choose file"
           />
         </div>
-
-        {/* Ghi âm */}
         <div className="mr-3">
           <button
             type="button"
@@ -131,14 +232,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 : "text-gray-500 hover:text-blue-500"
             }`}
             onClick={toggleRecording}
-            aria-label="Record message"
-            title="Record message"
+            aria-label={isRecording ? "Stop recording" : "Record message"}
+            title={isRecording ? "Stop recording" : "Record message"}
           >
-            <FaMicrophone />
+            {isRecording ? <FaStop /> : <FaMicrophone />}
           </button>
         </div>
 
-        {/* Input và nút gửi */}
         <div className="flex-1 relative">
           {file && (
             <div className="mb-2 p-2 bg-blue-50 rounded flex items-center justify-between">

@@ -9,7 +9,6 @@ import * as UserApi from "@/api/UserRequest";
 import { uploadImage } from "@/actions/UploadAction";
 import { updateUser } from "@/actions/UserAction";
 
-// Định nghĩa interface cho dữ liệu người dùng
 interface UserData {
   _id?: string;
   fullname?: string;
@@ -42,16 +41,6 @@ const languageOptions = [
 ];
 
 const ProfileEdit = () => {
-  const [fullname, setfullname] = useState("Bùi Thái Sỹ");
-  const [email, setEmail] = useState("symerline2004@gmail.com");
-  const [phone, setPhone] = useState("0354823156");
-  const [address, setAddress] = useState("Nghệ An");
-  const [birthday, setBirthday] = useState<Date | null>(new Date("2004-09-20"));
-  const [language, setLanguage] = useState(languageOptions[0]);
-  const [occupation, setOccupation] = useState("");
-
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [isHovered, setIsHovered] = useState<Record<string, boolean>>({
     fullname: false,
     email: false,
@@ -79,7 +68,6 @@ const ProfileEdit = () => {
     "success"
   );
 
-  // Thêm state để lưu URL preview ảnh
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -132,22 +120,16 @@ const ProfileEdit = () => {
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-      // Lấy file ảnh đã chọn
       const file = event.target.files[0];
-      // Tạo URL tạm thời để hiển thị ảnh preview
       const imageUrl = URL.createObjectURL(file);
-      // Lưu URL vào state để hiển thị preview
       setPreviewImage(imageUrl);
-      // Lưu file ảnh vào state để upload sau
       setProfileImage(file);
       console.log("Selected new profile image:", file.name);
     }
   };
 
-  // Dọn dẹp URL khi component unmount
   useEffect(() => {
     return () => {
-      // Revoke object URL để tránh rò rỉ bộ nhớ
       if (previewImage) {
         URL.revokeObjectURL(previewImage);
       }
@@ -167,12 +149,8 @@ const ProfileEdit = () => {
       message: "Your profile is being updated.",
     });
 
-    // Tạo bản sao của formData để tránh thay đổi state trực tiếp
     let userData = { ...formData };
-
-    // Xử lý ảnh mới nếu có
     if (profileImage instanceof File) {
-      // Nếu profileImage là File (đã chọn ảnh mới)
       const data = new FormData();
       const fileName = Date.now() + (profileImage.name || "profile.jpg");
       data.append("name", fileName);

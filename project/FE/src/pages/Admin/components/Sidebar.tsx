@@ -1,6 +1,11 @@
 import { FC } from "react";
 
-type ActiveView = "dashboard" | "users" | "posts" | "messages" | "comments";
+type ActiveView =
+  | "dashboard"
+  | "users"
+  | "posts"
+  | "conversations"
+  | "comments";
 
 interface SidebarProps {
   activeView: ActiveView;
@@ -12,7 +17,7 @@ const Sidebar: FC<SidebarProps> = ({ activeView, setActiveView }) => {
     { id: "dashboard", label: "Dashboard", icon: "📊" },
     { id: "users", label: "User", icon: "👥" },
     { id: "posts", label: "Post", icon: "📝" },
-    { id: "messages", label: "Message", icon: "💬" },
+    { id: "conversations", label: "Conversation", icon: "💬" },
     { id: "comments", label: "Comment", icon: "💭" },
   ];
 

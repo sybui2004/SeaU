@@ -1,11 +1,17 @@
-import API from "./AxiosConfig";
+import axios from "axios";
 
-/**
- * Perform a search query with pagination
- * @param query The search term
- * @param page The page number (starts at 1)
- * @returns Search results containing posts and users
- */
+const API = axios.create({ baseURL: "http://localhost:3000", timeout: 10000 });
+
+API.interceptors.request.use((req) => {
+  if (localStorage.getItem("profile")) {
+    req.headers.Authorization = `Bearer ${
+      JSON.parse(localStorage.getItem("profile") as string).token
+    }`;
+  }
+
+  return req;
+});
+
 export const searchApi = async (query: string, page: number = 1) => {
   try {
     const encoded = encodeURIComponent(query);
@@ -17,12 +23,6 @@ export const searchApi = async (query: string, page: number = 1) => {
   }
 };
 
-/**
- * Search for users only
- * @param query The search term
- * @param page The page number (starts at 1)
- * @returns User search results
- */
 export const searchUsersApi = async (query: string, page: number = 1) => {
   try {
     const encoded = encodeURIComponent(query);
@@ -34,12 +34,6 @@ export const searchUsersApi = async (query: string, page: number = 1) => {
   }
 };
 
-/**
- * Search for posts only
- * @param query The search term
- * @param page The page number (starts at 1)
- * @returns Post search results
- */
 export const searchPostsApi = async (query: string, page: number = 1) => {
   try {
     const encoded = encodeURIComponent(query);

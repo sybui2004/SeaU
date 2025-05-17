@@ -17,34 +17,49 @@ export const getUser = (userId: string) => API.get(`/user/${userId}`);
 export const updateUser = (id: string, formData: any) =>
   API.put(`/user/${id}`, formData);
 
-// API kết bạn với người dùng
+export const getAllUsers = (
+  page: number = 1,
+  limit: number = 10,
+  search: string = "",
+  status: string = "all"
+) => {
+  let query = `page=${page}&limit=${limit}`;
+  if (search) query += `&search=${search}`;
+  if (status !== "all") query += `&status=${status}`;
+
+  return API.get(`/admin/users?${query}`);
+};
+
+export const getUserDetail = (userId: string) =>
+  API.get(`/admin/users/${userId}`);
+
+export const deleteUser = (userId: string, hardDelete: boolean = false) =>
+  API.delete(`/admin/users/${userId}${hardDelete ? "?hard_delete=true" : ""}`);
+
+export const updateUserByAdmin = (userId: string, userData: any) =>
+  API.put(`/admin/users/${userId}`, userData);
+
 export const sendFriendRequest = (id: string, currentUserId: string) =>
   API.post(`/user/${id}/friend-request`, { currentUserId });
 
-// API chấp nhận kết bạn
 export const acceptFriendRequest = (id: string, currentUserId: string) =>
   API.post(`/user/${id}/accept`, { currentUserId });
 
-// API từ chối kết bạn
 export const rejectFriendRequest = (id: string, currentUserId: string) =>
   API.post(`/user/${id}/reject`, { currentUserId });
 
-// API hủy lời mời kết bạn
 export const cancelFriendRequest = (id: string, currentUserId: string) =>
   API.delete(`/user/${id}/friend-request`, { data: { currentUserId } });
 
-// API hủy kết bạn
 export const unfriendUser = (id: string, currentUserId: string) =>
   API.delete(`/user/${id}/unfriend`, { data: { currentUserId } });
 
-// API lấy danh sách bạn bè
 export const getFriendsList = (
   userId: string,
   page: number = 1,
   limit: number = 10
 ) => API.get(`/user/${userId}/friends?page=${page}&limit=${limit}`);
 
-// API lấy danh sách lời mời kết bạn đã nhận
 export const getReceivedFriendRequests = (
   userId: string,
   page: number = 1,
@@ -54,10 +69,17 @@ export const getReceivedFriendRequests = (
     `/user/${userId}/friend-requests/received?page=${page}&limit=${limit}`
   );
 
-// API lấy danh sách lời mời kết bạn đã gửi
 export const getSentFriendRequests = (
   userId: string,
   page: number = 1,
   limit: number = 10
 ) =>
   API.get(`/user/${userId}/friend-requests/sent?page=${page}&limit=${limit}`);
+
+export const getDashboardStats = () => {
+  return API.get(`/admin/stats`);
+};
+
+export const getTopUsers = (limit: number = 5, sortBy: string = "posts") => {
+  return API.get(`/admin/users?page=1&limit=${limit}&sort=${sortBy}`);
+};

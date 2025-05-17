@@ -3,14 +3,15 @@ import { Button } from "@/components/ui/button";
 import fileIcon from "@assets/images/icon-file.png";
 import downloadIcon from "@assets/images/icon-download.png";
 import { UserPlus, UserX } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-// Đường dẫn đến server hình ảnh
 const SERVER_PUBLIC = "http://localhost:3000/images/";
 
 interface Member {
   name: string;
   isAdmin: boolean;
   proPic?: string;
+  _id?: string;
 }
 
 interface ChatDetailProps {
@@ -37,15 +38,20 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
   selectedTab,
   setSelectedTab,
 }) => {
-  // Kiểm tra xem chat có phải là nhóm không
+  const navigate = useNavigate();
+
   const isGroup = chat?.isGroupChat;
 
-  // Tính số thành viên thực tế, loại bỏ người dùng hiện tại
   const memberCount = isGroup ? members.length : 2;
 
-  // Log số lượng thành viên để debug
   console.log("Members in chat:", members);
   console.log("Member count:", memberCount);
+
+  const handleMemberClick = (memberId?: string) => {
+    if (memberId) {
+      navigate(`/profile/${memberId}`);
+    }
+  };
 
   return (
     <div
@@ -62,26 +68,30 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
               {chat?.chatName?.charAt(0).toUpperCase() || "G"}
             </div>
           ) : members.length > 0 && members[0]?.proPic ? (
-            <img
-              src={
-                members[0].proPic.startsWith("http")
-                  ? members[0].proPic
-                  : `${SERVER_PUBLIC}${members[0].proPic}`
-              }
-              alt={members[0].name}
-              className="mb-2 h-16 w-16 rounded-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = "none";
-                // Tạo div hiển thị chữ cái đầu thay thế
-                const parent = target.parentNode;
-                const div = document.createElement("div");
-                div.className =
-                  "mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-2xl font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300";
-                div.textContent = members[0].name.charAt(0).toUpperCase();
-                if (parent) parent.appendChild(div);
-              }}
-            />
+            <div
+              onClick={() => handleMemberClick(members[0]?._id)}
+              className={members[0]?._id ? "cursor-pointer" : ""}
+            >
+              <img
+                src={
+                  members[0].proPic.startsWith("http")
+                    ? members[0].proPic
+                    : `${SERVER_PUBLIC}${members[0].proPic}`
+                }
+                alt={members[0].name}
+                className="mb-2 h-16 w-16 rounded-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = "none";
+                  const parent = target.parentNode;
+                  const div = document.createElement("div");
+                  div.className =
+                    "mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-2xl font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300";
+                  div.textContent = members[0].name.charAt(0).toUpperCase();
+                  if (parent) parent.appendChild(div);
+                }}
+              />
+            </div>
           ) : (
             <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-2xl font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
               {members.length > 0
@@ -90,7 +100,14 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
             </div>
           )}
 
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3
+            className={`text-lg font-semibold text-gray-900 dark:text-white ${
+              !isGroup && members.length > 0 && members[0]?._id
+                ? "hover:underline cursor-pointer"
+                : ""
+            }`}
+            onClick={() => !isGroup && handleMemberClick(members[0]?._id)}
+          >
             {isGroup
               ? chat?.chatName
               : members.length > 0
@@ -114,7 +131,10 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
               {members.map((member, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className={`flex items-center justify-between rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                    member._id ? "cursor-pointer" : ""
+                  }`}
+                  onClick={() => member._id && handleMemberClick(member._id)}
                 >
                   <div className="flex items-center">
                     {member.proPic ? (
@@ -128,12 +148,10 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
                           alt={member.name}
                           className="mr-3 h-8 w-8 rounded-full object-cover"
                           onError={(e) => {
-                            // Nếu ảnh lỗi, hiển thị chữ cái đầu
                             (e.target as HTMLImageElement).style.display =
                               "none";
                             const parent = (e.target as HTMLImageElement)
                               .parentNode;
-                            // Tạo div hiển thị chữ cái đầu
                             const fallbackDiv = document.createElement("div");
                             fallbackDiv.className =
                               "mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300";
@@ -150,7 +168,11 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
                       </div>
                     )}
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      <p
+                        className={`text-sm font-medium text-gray-900 dark:text-white ${
+                          member._id ? "hover:underline" : ""
+                        }`}
+                      >
                         {member.name}
                       </p>
                       {member.isAdmin && (
@@ -163,7 +185,10 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
                   {currentUser === groupAdmin && member.name !== "Bạn" && (
                     <button
                       className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
-                      aria-label={`Xóa ${member.name} khỏi nhóm`}
+                      aria-label={`Remove ${member.name} from group`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
                     >
                       <UserX className="h-4 w-4" />
                     </button>
@@ -230,7 +255,7 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
                   </div>
                 </div>
                 <Button variant="ghost" className="text-blue-500">
-                  <img src={downloadIcon} alt="Tải xuống" />
+                  <img src={downloadIcon} alt="Download" />
                 </Button>
               </div>
             ))

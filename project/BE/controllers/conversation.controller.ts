@@ -4,6 +4,120 @@ import mongoose from "mongoose";
 import { Request, Response } from "express";
 import { responseUtils } from "../utils/response.utils";
 
+// Get all conversations for admin
+export const getAllConversationsForAdmin = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+    const search = (req.query.search as string) || "";
+
+    const searchQuery: any = {};
+    if (search) {
+      searchQuery.$or = [{ groupName: { $regex: search, $options: "i" } }];
+    }
+
+    const totalConversations = await Conversation.countDocuments(searchQuery);
+    const totalPages = Math.ceil(totalConversations / limit);
+
+    const conversations = await Conversation.find(searchQuery)
+      .populate("members", "fullname profilePic")
+      .populate("groupAdmin", "fullname profilePic")
+      .populate({
+        path: "lastMessage",
+        populate: {
+          path: "senderId",
+          select: "fullname profilePic",
+        },
+      })
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    const enhancedConversations = await Promise.all(
+      conversations.map(async (conversation) => {
+        const conversationObj = conversation.toObject();
+
+        (conversationObj as any).memberDetails = conversationObj.members;
+
+        if (conversationObj.lastMessage) {
+          const lastMessage = await Message.findById(
+            conversationObj.lastMessage._id
+          );
+          if (lastMessage) {
+            (conversationObj as any).lastMessage = lastMessage.text;
+          }
+        }
+
+        return conversationObj;
+      })
+    );
+
+    return responseUtils.success(res, {
+      conversations: enhancedConversations,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalConversations,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error retrieving all conversations for admin:", error);
+    return responseUtils.error(res, "Error retrieving conversations", 500);
+  }
+};
+
+// Get conversation details for admin
+export const getConversationDetailsForAdmin = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const conversationId = req.params.conversationId;
+
+    const conversation = await Conversation.findById(conversationId)
+      .populate("members", "fullname profilePic email username")
+      .populate("groupAdmin", "fullname profilePic")
+      .populate({
+        path: "lastMessage",
+        populate: {
+          path: "senderId",
+          select: "fullname profilePic",
+        },
+      });
+
+    if (!conversation) {
+      return responseUtils.error(res, "Conversation not found", 404);
+    }
+
+    const messageCount = await Message.countDocuments({ conversationId });
+
+    const recentMessages = await Message.find({ conversationId })
+      .populate("senderId", "fullname profilePic")
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    const conversationDetails = {
+      ...conversation.toObject(),
+      messageCount,
+      recentMessages,
+    };
+
+    return responseUtils.success(res, { conversation: conversationDetails });
+  } catch (error) {
+    console.error("Error retrieving conversation details for admin:", error);
+    return responseUtils.error(
+      res,
+      "Error retrieving conversation details",
+      500
+    );
+  }
+};
+
 // Get all conversations of a user
 export const getConversations = async (req: Request, res: Response) => {
   try {
@@ -33,8 +147,27 @@ export const getConversations = async (req: Request, res: Response) => {
       .skip(skip)
       .limit(limit);
 
+    const enhancedConversations = await Promise.all(
+      conversations.map(async (conversation) => {
+        const conversationObj = conversation.toObject();
+
+        (conversationObj as any).memberDetails = conversationObj.members;
+
+        if (conversationObj.lastMessage) {
+          const lastMessage = await Message.findById(
+            conversationObj.lastMessage._id
+          );
+          if (lastMessage) {
+            (conversationObj as any).lastMessage = lastMessage.text;
+          }
+        }
+
+        return conversationObj;
+      })
+    );
+
     return responseUtils.success(res, {
-      conversations,
+      conversations: enhancedConversations,
       pagination: {
         currentPage: page,
         totalPages,
@@ -74,6 +207,7 @@ export const findConversation = async (req: Request, res: Response) => {
     return responseUtils.error(res, "Error finding conversation", 500);
   }
 };
+
 // Create a new conversation
 export const createConversation = async (req: Request, res: Response) => {
   const { senderId, receiverId } = req.body;
@@ -177,7 +311,7 @@ export const createGroupChat = async (req: Request, res: Response) => {
 // Delete a conversation
 export const deleteConversation = async (req: Request, res: Response) => {
   const conversationId = req.params.conversationId;
-  const { userId, currentUserAdminStatus } = req.body;
+  const { userId, isAdmin } = req.body;
 
   try {
     const conversation = await Conversation.findById(conversationId);
@@ -186,7 +320,7 @@ export const deleteConversation = async (req: Request, res: Response) => {
       return responseUtils.error(res, "Conversation not found", 404);
     }
 
-    if (!conversation.members.includes(userId) && !currentUserAdminStatus) {
+    if (!conversation.members.includes(userId) && !isAdmin) {
       return responseUtils.error(
         res,
         "Not authorized to delete this conversation",
@@ -211,6 +345,33 @@ export const deleteConversation = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error deleting conversation:", error);
+    return responseUtils.error(res, "Error deleting conversation", 500);
+  }
+};
+
+// Admin delete conversation
+export const deleteConversationAsAdmin = async (
+  req: Request,
+  res: Response
+) => {
+  const conversationId = req.params.conversationId;
+
+  try {
+    const conversation = await Conversation.findById(conversationId);
+
+    if (!conversation) {
+      return responseUtils.error(res, "Conversation not found", 404);
+    }
+
+    await Message.deleteMany({ conversationId });
+
+    await Conversation.findByIdAndDelete(conversationId);
+
+    return responseUtils.success(res, {
+      message: "Conversation and all messages deleted successfully by admin",
+    });
+  } catch (error) {
+    console.error("Error deleting conversation as admin:", error);
     return responseUtils.error(res, "Error deleting conversation", 500);
   }
 };

@@ -6,9 +6,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Sử dụng biến môi trường với giá trị mặc định giống với middleware
 const secret = process.env.JWT_KEY || "MERN";
-console.log("Auth controller using secret key:", secret);
 
 // Register
 export const registerUser = async (req: Request, res: Response) => {
@@ -63,7 +61,6 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
-// Admin Login
 export const loginAdmin = async (req: Request, res: Response) => {
   const { username, password } = req.body;
   console.log("Admin login attempt:", { username });
@@ -97,7 +94,7 @@ export const loginAdmin = async (req: Request, res: Response) => {
       },
       secret,
       {
-        expiresIn: "12h", // Thời gian token dài hơn cho admin
+        expiresIn: "12h",
       }
     );
 

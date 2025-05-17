@@ -15,9 +15,7 @@ async function createAdminAccount() {
     const existingAdmin = await User.findOne({ username: "admin" });
 
     if (existingAdmin) {
-      console.log(
-        "Tài khoản admin đã tồn tại. Cập nhật mật khẩu và quyền admin..."
-      );
+      console.log("Admin account exists.");
 
       const salt = await bcrypt.genSalt(10);
       const newPassword = "admin123";
@@ -34,7 +32,7 @@ async function createAdminAccount() {
         { new: true }
       );
 
-      console.log("Đã cập nhật tài khoản admin:");
+      console.log("Admin account updated:");
       console.log(`ID: ${updatedUser?._id}`);
       console.log(`Username: admin`);
       console.log(`Password: admin123`);
@@ -55,13 +53,13 @@ async function createAdminAccount() {
 
     const savedUser = await newAdmin.save();
 
-    console.log("Đã tạo tài khoản admin mới:");
+    console.log("New admin account created:");
     console.log(`ID: ${savedUser._id}`);
     console.log(`Username: admin`);
     console.log(`Password: admin123`);
     console.log(`isAdmin: ${savedUser.isAdmin}`);
   } catch (error) {
-    console.error("Lỗi khi tạo tài khoản admin:", error);
+    console.error("Error creating admin account:", error);
   } finally {
     setTimeout(() => {
       mongoose.connection.close();
@@ -71,5 +69,3 @@ async function createAdminAccount() {
 }
 
 createAdminAccount();
-
-// npx ts-node utils/createAdminAccount.ts

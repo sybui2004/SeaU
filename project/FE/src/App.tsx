@@ -54,15 +54,12 @@ function App() {
       />
       <Suspense fallback={<div>Loading...</div>}>
         <Routes>
-          {/* Public routes */}
           <Route
             path="/"
             element={
               authData ? <Navigate to="/home" /> : <Navigate to="/auth" />
             }
           />
-
-          {/* Login Routes */}
           <Route
             path="/auth"
             element={authData ? <Navigate to="/home" /> : <Auth />}
@@ -78,7 +75,6 @@ function App() {
             }
           />
 
-          {/* Protected user routes */}
           <Route
             path="/home/*"
             element={
@@ -88,7 +84,6 @@ function App() {
             }
           />
 
-          {/* Admin routes */}
           <Route
             path="admin/*"
             element={
@@ -98,7 +93,6 @@ function App() {
             }
           />
 
-          {/* Other routes */}
           <Route
             path="/search"
             element={
@@ -156,7 +150,6 @@ function App() {
             }
           />
 
-          {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Suspense>

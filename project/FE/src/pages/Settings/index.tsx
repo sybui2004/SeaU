@@ -4,12 +4,10 @@ import Sidebar from "@/components/layout/Sidebar";
 import axios from "axios";
 
 const Settings = () => {
-  const dispatch = useSelector((state: any) => state.authReducer.dispatch);
   const { user } = useSelector((state: any) => state.authReducer.authData);
   const token = useSelector((state: any) => state.authReducer.authData.token);
   const API_BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
 
-  // Check if dark mode is enabled on mount
   useEffect(() => {
     const isDarkMode = localStorage.getItem("darkMode") === "true";
     setDarkMode(isDarkMode);
@@ -37,7 +35,6 @@ const Settings = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
     localStorage.setItem("darkMode", newMode.toString());
-    // Apply dark mode to document
     if (newMode) {
       document.documentElement.classList.add("dark");
     } else {
@@ -50,7 +47,6 @@ const Settings = () => {
     setError("");
     setSuccess("");
 
-    // Validation
     if (!oldPassword || !newPassword || !confirmPassword) {
       setError("All fields are required");
       return;
@@ -69,7 +65,6 @@ const Settings = () => {
     setLoading(true);
 
     try {
-      // Bước 1: Xác thực mật khẩu cũ
       const verifyResponse = await axios.post(
         `${API_BASE_URL}/auth/verify-password`,
         {
@@ -83,14 +78,12 @@ const Settings = () => {
         }
       );
 
-      // Kiểm tra xác thực
       if (!verifyResponse.data.success) {
         setError("Current password is incorrect");
         setLoading(false);
         return;
       }
 
-      // Bước 2: Cập nhật mật khẩu mới
       const response = await axios.put(
         `${API_BASE_URL}/user/${user._id}`,
         {
@@ -104,10 +97,8 @@ const Settings = () => {
         }
       );
 
-      // Nếu thành công, hiển thị thông báo thành công
       setSuccess("Password updated successfully");
 
-      // Cập nhật thông tin trong local storage nếu cần
       try {
         const profile = JSON.parse(localStorage.getItem("profile") || "{}");
         if (profile.user && profile.user._id === user._id) {
@@ -118,7 +109,6 @@ const Settings = () => {
         console.error("Error updating local storage:", e);
       }
 
-      // Reset form
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -126,7 +116,6 @@ const Settings = () => {
       console.error("Error updating password:", error);
 
       if (error.response) {
-        // Xử lý các loại lỗi khác nhau từ server
         if (error.response.status === 401 || error.response.status === 403) {
           setError("Current password is incorrect");
         } else if (

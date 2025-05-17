@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import User from "../models/user.model";
 dotenv.config();
 
-// Kết nối database - Sử dụng MONGO_URI từ .env
 const MONGO_URI = process.env.MONGO_URI;
 console.log("Connecting to MongoDB with URI:", MONGO_URI);
 
@@ -12,13 +11,11 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Liệt kê tất cả người dùng
 async function listAllUsers() {
   try {
-    // Tìm tất cả người dùng
     const users = await User.find({});
 
-    console.log(`Tìm thấy ${users.length} người dùng trong database:`);
+    console.log(`Found ${users.length} users in the database:`);
 
     users.forEach((user, index) => {
       console.log(`\nUser #${index + 1}:`);
@@ -28,7 +25,6 @@ async function listAllUsers() {
       console.log(`isAdmin: ${user.isAdmin || false}`);
     });
 
-    // Tìm user với username "admin"
     const adminUser = await User.findOne({ username: "admin" });
 
     if (adminUser) {
@@ -38,15 +34,13 @@ async function listAllUsers() {
       console.log(`Fullname: ${adminUser.fullname}`);
       console.log(`isAdmin: ${adminUser.isAdmin || false}`);
     } else {
-      console.log("\nKhông tìm thấy tài khoản với username 'admin'");
+      console.log("\nAdmin account not found");
     }
   } catch (error) {
-    console.error("Lỗi khi liệt kê người dùng:", error);
+    console.error("Error listing users:", error);
   } finally {
-    // Đóng kết nối database
     mongoose.connection.close();
   }
 }
 
-// Chạy hàm liệt kê người dùng
 listAllUsers();

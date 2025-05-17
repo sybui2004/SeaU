@@ -78,14 +78,11 @@ const Home = React.memo(() => {
   return (
     <div className="flex bg-gray-50 min-h-screen">
       <Sidebar />
-      {/* Main Content */}
       <div
         ref={scrollContainerRef}
         className="grow shrink-0 basis-0 w-full pl-[80px] max-md:max-w-full h-screen overflow-y-scroll custom-scrollbar"
       >
-        {/* Header */}
         <Header />
-        {/* Content Area */}
         <div className="flex m-auto overflow-hidden flex-col pt-6 pb-5 max-w-[60%] w-full bg-white my-5 px-5 max-md:pl-5 max-md:max-w-full rounded-lg shadow-sm">
           <PostShare />
         </div>
@@ -103,12 +100,10 @@ const Home = React.memo(() => {
                     key={post._id || index}
                     className="flex m-auto overflow-hidden flex-col pt-6 pb-10 max-w-[60%] w-full bg-white my-5 px-5 max-md:pl-5 max-md:max-w-full rounded-lg shadow-sm"
                   >
-                    {/* Post Card */}
                     <Post data={post} />
                   </div>
                 ))}
 
-                {/* Phần tử được theo dõi bởi Intersection Observer */}
                 {hasNextPage && (
                   <div
                     ref={observerRef}

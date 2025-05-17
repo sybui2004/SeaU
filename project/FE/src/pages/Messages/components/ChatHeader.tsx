@@ -1,10 +1,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import normalCallIcon from "@assets/images/icon-normal-call.png";
-import videoCallIcon from "@assets/images/icon-video-call.png";
 import threeDotsIcon from "@assets/images/icon-three-dots.png";
+import { useNavigate } from "react-router-dom";
 
-// Server path cho avatar
 const SERVER_PUBLIC = "http://localhost:3000/images/";
 
 interface ChatHeaderProps {
@@ -12,7 +10,7 @@ interface ChatHeaderProps {
   toggleChatDetail: () => void;
   isGroup?: boolean;
   avatar?: string;
-  members?: { name: string; proPic?: string }[];
+  members?: { name: string; proPic?: string; _id?: string }[];
 }
 
 const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -22,14 +20,28 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   avatar,
   members = [],
 }) => {
-  // Hiển thị kí tự đầu của tên nếu không có avatar
+  const navigate = useNavigate();
+
   const getInitial = (name: string) => {
     return name ? name.charAt(0).toUpperCase() : "C";
   };
 
+  const handleUserClick = () => {
+    if (!isGroup && members.length > 0 && members[0]._id) {
+      navigate(`/profile/${members[0]._id}`);
+    }
+  };
+
   return (
     <div className="flex items-center justify-between p-2 border-b">
-      <div className="flex items-center">
+      <div
+        className={`flex items-center ${
+          !isGroup && members.length > 0 && members[0]._id
+            ? "cursor-pointer"
+            : ""
+        }`}
+        onClick={handleUserClick}
+      >
         {/* Avatar */}
         {avatar ? (
           <img
@@ -39,7 +51,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             alt={chatName}
             className="w-10 h-10 rounded-full object-cover mr-3"
             onError={(e) => {
-              // Nếu load ảnh lỗi, hiển thị kí tự đầu
               (e.target as HTMLImageElement).style.display = "none";
               (
                 e.target as HTMLImageElement
@@ -60,7 +71,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             alt={members[0].name}
             className="w-10 h-10 rounded-full object-cover mr-3"
             onError={(e) => {
-              // Nếu load ảnh lỗi, hiển thị kí tự đầu
               (e.target as HTMLImageElement).style.display = "none";
               (
                 e.target as HTMLImageElement
@@ -78,7 +88,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           {getInitial(chatName)}
         </div>
         {/* Tên cuộc trò chuyện */}
-        <div>
+        <div
+          className={
+            !isGroup && members.length > 0 && members[0]._id
+              ? "hover:underline"
+              : ""
+          }
+        >
           <span className="text-lg font-medium">{chatName || "New chat"}</span>
           {isGroup && members.length > 0 && (
             <div className="text-xs text-gray-500">
@@ -88,12 +104,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
       </div>
       <div className="justify-end">
-        <Button variant="ghost" title="Call">
-          <img src={normalCallIcon} alt="Call" className="w-7" />
-        </Button>
-        <Button variant="ghost" title="Video call">
-          <img src={videoCallIcon} alt="Video call" className="w-7" />
-        </Button>
         <Button variant="ghost" onClick={toggleChatDetail} title="Chat info">
           <img src={threeDotsIcon} alt="Show chat info" className="w-7" />
         </Button>

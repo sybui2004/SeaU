@@ -12,11 +12,14 @@ import conversationRoutes from "./routes/conversation.route";
 import messageRoutes from "./routes/message.route";
 import commentRoutes from "./routes/comment.route";
 import searchRoute from "./routes/search.route";
+import adminRoutes from "./routes/admin.route";
 
 const app = express();
 
 app.use(express.static("public"));
 app.use("/images", express.static("images"));
+app.use("/audio", express.static("public/audio"));
+app.use("/video", express.static("public/video"));
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const port = process.env.PORT || 3000;
 app.use(morgan("dev"));
@@ -38,6 +41,7 @@ app.use("/comment", commentRoutes);
 app.use("/upload", uploadRoutes);
 app.use("/search", searchRoute);
 app.use("/conversation", conversationRoutes);
+app.use("/admin", adminRoutes);
 
 app.listen(port, () => {
   connectDB();

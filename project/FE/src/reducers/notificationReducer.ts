@@ -68,7 +68,6 @@ const notificationReducer = (state = initialState, action: any) => {
 
     case "ACCEPT_FRIEND_REQUEST_NOTIFICATION":
     case "REJECT_FRIEND_REQUEST_NOTIFICATION":
-      // Có thể xóa thông báo khỏi danh sách hoặc đánh dấu đã xử lý
       return {
         ...state,
         notifications: state.notifications.filter(

@@ -1,38 +1,30 @@
 import axios from "axios";
 
-// API service cho comment
 const CommentApi = {
-  // Lấy tất cả comment của bài post
   getPostComments: async (postId: string) => {
     return await axios.get(`/comment/${postId}`);
   },
 
-  // Tạo comment mới
   createComment: async (postId: string, userId: string, content: string) => {
     return await axios.post(`/comment`, { postId, userId, content });
   },
 
-  // Cập nhật comment
   updateComment: async (commentId: string, userId: string, content: string) => {
     return await axios.put(`/comment/${commentId}`, { userId, content });
   },
 
-  // Xóa comment
   deleteComment: async (commentId: string, userId: string) => {
     return await axios.delete(`/comment/${commentId}`, { data: { userId } });
   },
 
-  // Like/unlike comment
   likeComment: async (commentId: string, userId: string) => {
     return await axios.put(`/comment/${commentId}/like`, { userId });
   },
 
-  // Lấy replies của comment
   getCommentReplies: async (commentId: string) => {
     return await axios.get(`/comment/${commentId}/replies`);
   },
 
-  // Tạo reply cho comment
   createReply: async (
     commentId: string,
     userId: string,

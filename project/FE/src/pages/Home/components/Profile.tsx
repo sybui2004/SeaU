@@ -21,7 +21,12 @@ import {
   cancelFriendRequest,
   unfriendUser,
 } from "@/actions/UserAction";
-import axios from "axios";
+import * as UserApi from "@/api/UserRequest";
+import { getUserPosts } from "@/api/PostRequest";
+import {
+  findConversation,
+  createConversation,
+} from "@/api/ConversationRequest";
 
 const formatDate = (dateString: string | null) => {
   if (!dateString) return "Not specified";
@@ -71,7 +76,6 @@ const Profile = () => {
     sentFriendRequests: [],
   });
 
-  // Thêm state cho số lượng bạn chung
   const [mutualFriends, setMutualFriends] = useState(0);
 
   const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -84,16 +88,16 @@ const Profile = () => {
   const observerRef = useRef<HTMLDivElement | null>(null);
   const postsContainerRef = useRef<HTMLDivElement | null>(null);
 
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const response = await axios.get(
-          `http://localhost:3000/user/${profileUserId}`
-        );
+        const response = await UserApi.getUser(profileUserId as string);
         if (response.data) {
           setUserInfo({
             id: profileUserId,
-            fullname: response.data.fullname || "Người dùng",
+            fullname: response.data.fullname || "User",
             profilePic: response.data.profilePic,
             dob: response.data.dob || null,
             address: response.data.address || null,
@@ -116,9 +120,7 @@ const Profile = () => {
       if (!profileUserId) return;
 
       try {
-        const response = await axios.get(
-          `http://localhost:3000/post/user/${profileUserId}?page=1&limit=1`
-        );
+        const response = await getUserPosts(profileUserId as string, 1, 1);
 
         if (response.data && response.data.pagination) {
           setTotalPosts(response.data.pagination.totalItems);
@@ -137,16 +139,25 @@ const Profile = () => {
 
       setLoadingPosts(true);
       try {
-        const response = await axios.get(
-          `http://localhost:3000/post/user/${profileUserId}?page=${pageNum}&limit=${limit}`
+        const response = await getUserPosts(
+          profileUserId as string,
+          pageNum,
+          limit
         );
 
         if (response.data) {
           console.log("User posts response:", response.data);
 
           if (response.data.posts) {
-            setTotalPosts(response.data.posts.length);
-            setHasMore(pageNum < response.data.posts.length);
+            if (response.data.pagination) {
+              setTotalPosts(response.data.pagination.totalItems);
+              setHasMore(pageNum < response.data.pagination.totalPages);
+            } else {
+              setTotalPosts(response.data.posts.length);
+              setHasMore(
+                pageNum < Math.ceil(response.data.posts.length / limit)
+              );
+            }
 
             if (append) {
               setUserPosts((prev) => [...prev, ...response.data.posts]);
@@ -241,7 +252,6 @@ const Profile = () => {
     }
   }, [dispatch, profileUserId, userInfo]);
 
-  // Tính số bạn chung khi xem profile người khác
   useEffect(() => {
     const calculateMutualFriends = () => {
       if (
@@ -252,11 +262,9 @@ const Profile = () => {
         console.log("Current user friends:", currentUser.friends);
         console.log("Profile user friends:", userInfo.friends);
 
-        // Dựa trên định nghĩa model, friends là Array
         const currentUserFriends: string[] = currentUser.friends || [];
         const profileUserFriends: string[] = userInfo.friends || [];
 
-        // Lọc ra những người bạn chung
         const mutuals = profileUserFriends.filter((friendId: string) =>
           currentUserFriends.includes(friendId)
         );
@@ -309,12 +317,41 @@ const Profile = () => {
     setIsMenuOpen(false);
   };
 
+  const handleMessageClick = async () => {
+    if (!currentUser || !profileUserId || isCreatingConversation) return;
+
+    setIsCreatingConversation(true);
+    try {
+      const { data } = await findConversation(currentUser._id, profileUserId);
+
+      if (data && data.conversation) {
+        navigate(`/message`);
+        localStorage.setItem("currentChatId", data.conversation._id);
+      } else {
+        const result = await createConversation(currentUser._id, profileUserId);
+
+        if (
+          result.data &&
+          result.data.conversation &&
+          result.data.conversation._id
+        ) {
+          localStorage.setItem("currentChatId", result.data.conversation._id);
+          navigate(`/message`);
+        } else {
+          console.error("Cannot create conversation:", result);
+        }
+      }
+    } catch (error) {
+      console.error("Error creating/finding conversation:", error);
+    } finally {
+      setIsCreatingConversation(false);
+    }
+  };
+
   if (profileUserId && !userInfo) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="text-2xl text-red-500">
-          Không tìm thấy thông tin người dùng
-        </div>
+        <div className="text-2xl text-red-500">User not found</div>
       </div>
     );
   }
@@ -400,10 +437,13 @@ const Profile = () => {
                   <Button
                     variant="gradientCustom"
                     className="flex items-center gap-2 px-3 py-3 mt-1.5 text-base leading-loose text-white shadow-md transition-all duration-300"
-                    onClick={() => navigate(`/message?userId=${profileUserId}`)}
+                    onClick={handleMessageClick}
+                    disabled={isCreatingConversation}
                   >
                     <FontAwesomeIcon icon={faCommentDots} />
-                    <div>Message</div>
+                    <div>
+                      {isCreatingConversation ? "Đang xử lý..." : "Message"}
+                    </div>
                   </Button>
                 </div>
               ) : friendStatus === "pending" ? (
@@ -492,7 +532,6 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Posts section - right content */}
       <div className="mt-6 flex-1 pr-2" ref={postsContainerRef}>
         <div className="ml-10 mb-4 flex justify-center">
           {profileUserId === currentUser?._id && <PostShare />}
@@ -509,7 +548,6 @@ const Profile = () => {
                 <Post key={post._id || index} data={post} />
               ))}
 
-              {/* Observer element for infinite scroll */}
               <div
                 ref={observerRef}
                 className="h-14 flex justify-center items-center"
