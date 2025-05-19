@@ -286,7 +286,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
     console.log("Loading messages for chat ID:", chat._id);
     setIsLoading(true);
-    setFiles([]); // Clear files when loading a new chat
+    setFiles([]);
 
     const fetchMessages = async () => {
       try {
@@ -298,12 +298,9 @@ const ChatMain: React.FC<ChatMainProps> = ({
         console.log("Loaded messages:", result.messages.length);
         console.log("Files loaded:", result.fileData);
 
-        // Update states in a batch with stable references
         setMessages(result.messages);
 
-        // Process files to ensure uniqueness
         if (result.fileData && result.fileData.length > 0) {
-          // Use a Map to ensure uniqueness by URL or name
           const uniqueFiles = new Map();
 
           result.fileData.forEach((file) => {
@@ -311,14 +308,12 @@ const ChatMain: React.FC<ChatMainProps> = ({
             if (key && !uniqueFiles.has(key)) {
               uniqueFiles.set(key, {
                 ...file,
-                // Ensure all files have proper type and size
                 type: file.type || "other",
                 size: file.size || "Unknown",
               });
             }
           });
 
-          // Convert Map back to array
           setFiles(Array.from(uniqueFiles.values()));
         }
 
@@ -348,10 +343,8 @@ const ChatMain: React.FC<ChatMainProps> = ({
           userData
         );
 
-        // Add message to state
         setMessages((prev) => [...prev, newMsg]);
 
-        // Add file to gallery if the message contains a file
         if (newMsg.fileData || newMsg.fileUrl) {
           const fileType =
             newMsg.fileType ||
@@ -370,7 +363,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
             type: fileType,
           };
 
-          // Ensure we don't add the file if it already exists with same URL or name
           setFiles((prev) => {
             const fileExists = prev.some(
               (file) =>
@@ -489,7 +481,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
       return;
     }
 
-    // Create temporary message to show immediately in chat
     const newMsg = createTempMessage(
       message,
       currentUser,
@@ -498,29 +489,24 @@ const ChatMain: React.FC<ChatMainProps> = ({
       { selectedFile, fileUrl, fileType }
     );
 
-    // Show message in UI immediately
     setMessages((prevMessages) => [...prevMessages, newMsg]);
 
     try {
       let filePath: string | null = null;
 
-      // Handle file upload if present
       if (selectedFile) {
         try {
           console.log("Uploading file with type:", fileType);
 
-          // Create a local URL for the file
           const localFileUrl = fileUrl || URL.createObjectURL(selectedFile);
 
-          // Add file immediately to UI to prevent flickering
           const tempFile: FileData = {
             name: selectedFile.name,
             size: formatFileSize(selectedFile.size),
-            url: localFileUrl, // This is a string, not null
+            url: localFileUrl,
             type: fileType || "other",
           };
 
-          // Add file to gallery (if not already present)
           setFiles((prev) => {
             const fileExists = prev.some(
               (file) =>
@@ -532,7 +518,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
             return [...prev, tempFile];
           });
 
-          // Actually upload the file
           filePath = await uploadFileToServer(
             selectedFile,
             fileType || "other"
@@ -540,14 +525,13 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
           console.log("File uploaded successfully:", filePath);
 
-          // Update file URL with server path
           if (filePath) {
             setFiles((prev) => {
               return prev.map((file) => {
                 if (file.name === selectedFile.name) {
                   const updatedFile: FileData = {
                     ...file,
-                    url: filePath as string, // Using type assertion
+                    url: filePath as string,
                   };
                   return updatedFile;
                 }
@@ -654,7 +638,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
     };
   }, [fileUrl]);
 
-  // Function to add members to the group
   const handleAddMembers = async (memberIds: string[]) => {
     if (!chat?._id || !conversationDetail?.groupAdmin) {
       console.error("Missing chat ID or group admin");
@@ -664,7 +647,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
     try {
       console.log("Adding members to group:", memberIds);
 
-      // Process each member one by one to handle errors better
       const addPromises = memberIds.map(async (memberId) => {
         try {
           const response = await addToGroup(chat._id, memberId, currentUser);
@@ -680,12 +662,10 @@ const ChatMain: React.FC<ChatMainProps> = ({
       const successCount = results.filter((r) => r.success).length;
 
       if (successCount > 0) {
-        // Refresh conversation details to get updated members
         const { data } = await getConversation(chat._id);
         const conversationData = data.conversation || data;
         setConversationDetail(conversationData);
 
-        // Update members list with new data
         if (conversationData.isGroupChat) {
           console.log("Refreshing group members after adding new members");
 
@@ -749,7 +729,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
     }
   };
 
-  // Function to remove a member from the group
   const handleRemoveMember = async (memberId: string) => {
     if (!chat?._id || !conversationDetail?.groupAdmin) {
       console.error("Missing chat ID or group admin");
@@ -759,7 +738,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
     try {
       console.log("Removing member from group:", memberId);
 
-      // Check if removing this member would leave fewer than 3 people in the group
       if (
         Array.isArray(conversationDetail.members) &&
         conversationDetail.members.length <= 3
@@ -773,12 +751,10 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
       console.log("Remove member response:", response);
 
-      // Refresh conversation details to get updated members
       const { data } = await getConversation(chat._id);
       const conversationData = data.conversation || data;
       setConversationDetail(conversationData);
 
-      // Update members list with new data
       if (conversationData.isGroupChat) {
         console.log("Refreshing group members after removing a member");
 
@@ -835,7 +811,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
     }
   };
 
-  // Function to update group info (name or avatar)
   const handleUpdateGroupInfo = async (data: {
     groupName?: string;
     groupAvatar?: File;
@@ -850,18 +825,15 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
       let fileName = "";
 
-      // If there's a new avatar, upload it first
       if (data.groupAvatar) {
         const formData = new FormData();
         fileName = Date.now() + data.groupAvatar.name;
         formData.append("name", fileName);
         formData.append("file", data.groupAvatar);
 
-        // Upload the image
         await uploadFileToServer(data.groupAvatar, "image");
       }
 
-      // Update the conversation with new info
       const response = await updateConversation(
         chat._id,
         data.groupName || chat.groupName || "",
@@ -871,7 +843,6 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
       console.log("Update group info response:", response);
 
-      // Refresh conversation details
       const { data: refreshData } = await getConversation(chat._id);
       const conversationData = refreshData.conversation || refreshData;
       setConversationDetail(conversationData);
@@ -891,7 +862,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
           isChatDetailVisible ? "w-[70%]" : "w-full"
         } h-full flex flex-col`}
       >
-          <ChatHeader
+        <ChatHeader
           chatName={
             chat?.isGroupChat
               ? chat?.chatName || chat?.groupName || "Group chat"
@@ -904,10 +875,9 @@ const ChatMain: React.FC<ChatMainProps> = ({
               : userData?.profilePic || undefined
           }
           members={members}
-            toggleChatDetail={() => setIsChatDetailVisible((prev) => !prev)}
-          />
+          toggleChatDetail={() => setIsChatDetailVisible((prev) => !prev)}
+        />
 
-          {/* Chat messages */}
         <ChatMessagesView
           messages={messages}
           isLoading={isLoading}
@@ -934,20 +904,20 @@ const ChatMain: React.FC<ChatMainProps> = ({
       {/* Chat Detail */}
       {isChatDetailVisible && (
         <div className="w-[30%] h-full">
-        <ChatDetail
+          <ChatDetail
             isOpen={isChatDetailVisible}
             onClose={() => setIsChatDetailVisible(false)}
             chat={chat || conversationDetail}
-          members={members}
+            members={members}
             currentUser={currentUser}
             groupAdmin={conversationDetail?.groupAdmin}
-          files={files}
-          selectedTab={selectedTab}
-          setSelectedTab={setSelectedTab}
+            files={files}
+            selectedTab={selectedTab}
+            setSelectedTab={setSelectedTab}
             addMembers={handleAddMembers}
             removeMember={handleRemoveMember}
             updateGroupInfo={handleUpdateGroupInfo}
-        />
+          />
         </div>
       )}
     </div>

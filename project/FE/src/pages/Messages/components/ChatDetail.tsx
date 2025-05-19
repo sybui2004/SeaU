@@ -7,8 +7,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { updateConversation } from "@/api/ConversationRequest";
 import { uploadImage } from "@/actions/UploadAction";
-import { useDispatch, useSelector } from "react-redux";
-import { getAllUsers, getFriendsList } from "@/api/UserRequest";
+import { useDispatch } from "react-redux";
+import { getFriendsList } from "@/api/UserRequest";
 
 const SERVER_PUBLIC = "http://localhost:3000/images/";
 
@@ -74,28 +74,20 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
   );
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Update newGroupName when chat changes
   useEffect(() => {
     setNewGroupName(chat?.groupName || "");
   }, [chat?.groupName]);
 
   const isGroup = chat?.isGroupChat;
-  // Force string comparison for admin check
   const isAdmin = String(currentUser).trim() === String(groupAdmin).trim();
   const memberCount = isGroup ? members.length : 2;
 
-  console.log("Current user:", currentUser, typeof currentUser);
-  console.log("Group admin:", groupAdmin, typeof groupAdmin);
-  console.log("Is admin:", isAdmin);
-
-  // Update file filters based on current files
   useEffect(() => {
     if (files && files.length > 0) {
       console.log("Files in ChatDetail:", files);
     }
   }, [files]);
 
-  // Separate files by type - use stable references for these filtered arrays
   const { imageFiles, videoFiles, audioFiles, documentFiles } =
     React.useMemo(() => {
       if (!files || files.length === 0) {
@@ -109,7 +101,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
 
       console.log("Recalculating file categories with", files.length, "files");
 
-      // Filter with proper type checking
       const imageFiles = files.filter(
         (file) =>
           (file.type && file.type.includes("image")) ||
@@ -141,17 +132,31 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
       return { imageFiles, videoFiles, audioFiles, documentFiles };
     }, [files]);
 
-  // Stable gallery tab handler
+  const getFileUrl = useCallback((file: FileData): string => {
+    if (file.url) {
+      if (file.url.startsWith("http")) {
+        return file.url;
+      }
+      if (file.url.startsWith("/") && !file.url.startsWith("//")) {
+        return `http://localhost:3000${file.url}`;
+      }
+      return file.url;
+    }
+    return `${SERVER_PUBLIC}${file.name}`;
+  }, []);
+
   const handleTabChange = useCallback((tab: "image" | "file") => {
     setSelectedTab(tab);
   }, []);
 
-  // Stable file opener function for viewing
   const openFile = useCallback((fileUrl: string) => {
     window.open(fileUrl, "_blank");
   }, []);
 
-  // New function to force download a file
+  const viewVideo = useCallback((fileUrl: string) => {
+    window.open(fileUrl, "_blank");
+  }, []);
+
   const downloadFile = useCallback((fileUrl: string, fileName: string) => {
     const link = document.createElement("a");
     link.href = fileUrl;
@@ -161,7 +166,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
     document.body.removeChild(link);
   }, []);
 
-  // Gallery section with memo to prevent re-rendering
   const gallerySection = React.useMemo(() => {
     return (
       <>
@@ -203,53 +207,47 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
                 <>
                   {imageFiles.length > 0 && (
                     <div className="grid grid-cols-3 gap-2">
-                      {imageFiles.map((file, index) => (
-                        <div
-                          key={`img-${index}-${file.name}`}
-                          className="relative aspect-square bg-gray-100 rounded-md"
-                          onClick={() =>
-                            openFile(file.url || `${SERVER_PUBLIC}${file.name}`)
-                          }
-                        >
-                          {/* Image placeholder - always visible */}
-                          <div className="w-full h-full absolute inset-0 flex items-center justify-center">
-                            <div className="text-gray-400 text-xs">Image</div>
-                          </div>
-
-                          {/* Actual image */}
-                          <div className="w-full h-full relative">
+                      {imageFiles.map((file, index) => {
+                        const fileUrl = getFileUrl(file);
+                        return (
+                          <div
+                            key={`img-${index}-${file.name}`}
+                            className="relative aspect-square bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => openFile(fileUrl)}
+                          >
                             <img
-                              src={file.url || `${SERVER_PUBLIC}${file.name}`}
+                              src={fileUrl}
                               alt={file.name}
-                              className="w-full h-full object-cover rounded-md absolute inset-0"
+                              className="w-full h-full object-cover"
                               loading="lazy"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
-                                target.onerror = null; // Prevent infinite loop
-                                target.style.opacity = "0"; // Hide the image on error
+                                target.onerror = null; 
+                                target.src = fileIcon; 
+                                target.className = "w-16 h-16 m-auto"; 
                               }}
                             />
-                          </div>
 
-                          {/* Download button */}
-                          <button
-                            className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md z-10"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent opening the file when clicking download
-                              downloadFile(
-                                file.url || `${SERVER_PUBLIC}${file.name}`,
-                                file.name
-                              );
-                            }}
-                          >
-                            <img
-                              src={downloadIcon}
-                              alt="Download"
-                              className="w-3 h-3"
-                            />
-                          </button>
-                        </div>
-                      ))}
+                            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-1 text-xs truncate">
+                              {file.name}
+                            </div>
+
+                            <button
+                              className="absolute top-1 right-1 bg-white rounded-full p-1 shadow-md z-10"
+                              onClick={(e) => {
+                                e.stopPropagation(); 
+                                downloadFile(fileUrl, file.name);
+                              }}
+                            >
+                              <img
+                                src={downloadIcon}
+                                alt="Download"
+                                className="w-3 h-3"
+                              />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -257,56 +255,80 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
                     <div className="mt-4">
                       <h5 className="text-sm font-medium mb-2">Videos</h5>
                       <div className="grid grid-cols-2 gap-2">
-                        {videoFiles.map((file, index) => (
-                          <div
-                            key={`vid-${index}-${file.name}`}
-                            className="relative bg-black rounded-md overflow-hidden"
-                          >
-                            <div className="aspect-video flex items-center justify-center">
-                              {/* Static video thumbnail instead of video element */}
-                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800">
-                                <div className="text-white text-sm text-center mb-1">
-                                  Video
+                        {videoFiles.map((file, index) => {
+                          const fileUrl = getFileUrl(file);
+                          return (
+                            <div
+                              key={`vid-${index}-${file.name}`}
+                              className="relative bg-gray-800 rounded-md overflow-hidden"
+                            >
+                              <div className="aspect-video">
+                                <video
+                                  className="w-full h-full object-cover"
+                                  poster={fileUrl.replace(
+                                    /\.(mp4|webm|mov|avi)$/i,
+                                    ".jpg"
+                                  )}
+                                  preload="metadata"
+                                  onClick={() => viewVideo(fileUrl)}
+                                >
+                                  <source
+                                    src={fileUrl}
+                                    type={`video/${
+                                      file.name
+                                        .split(".")
+                                        .pop()
+                                        ?.toLowerCase() || "mp4"
+                                    }`}
+                                  />
+                                </video>
+
+                                <div
+                                  className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                                  onClick={() => viewVideo(fileUrl)}
+                                >
+                                  <div className="w-12 h-12 flex items-center justify-center rounded-full bg-blue-500 bg-opacity-80">
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="24"
+                                      height="24"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      className="text-white"
+                                    >
+                                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                    </svg>
+                                  </div>
                                 </div>
-                                <div className="text-xs text-gray-300 max-w-[90%] truncate">
-                                  {file.name}
+
+                                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-1">
+                                  <div className="text-xs truncate">
+                                    {file.name}
+                                  </div>
+                                  <div className="text-xs">{file.size}</div>
                                 </div>
-                                <div className="w-12 h-12 flex items-center justify-center rounded-full bg-blue-500 bg-opacity-80 mt-2">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="text-white"
-                                  >
-                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                                  </svg>
-                                </div>
+
+                                <button
+                                  className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md z-10"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    downloadFile(fileUrl, file.name);
+                                  }}
+                                >
+                                  <img
+                                    src={downloadIcon}
+                                    alt="Download"
+                                    className="w-3 h-3"
+                                  />
+                                </button>
                               </div>
-                              <button
-                                className="absolute bottom-2 right-2 bg-white rounded-full p-1 shadow-md z-10"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  downloadFile(
-                                    file.url || `${SERVER_PUBLIC}${file.name}`,
-                                    file.name
-                                  );
-                                }}
-                              >
-                                <img
-                                  src={downloadIcon}
-                                  alt="Download"
-                                  className="w-3 h-3"
-                                />
-                              </button>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -326,84 +348,101 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
                       <h5 className="text-sm font-medium mb-2">
                         Voice & Audio
                       </h5>
-                      {audioFiles.map((file, index) => (
-                        <div
-                          key={`audio-${index}-${file.name}`}
-                          className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg mb-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <img
-                              src={fileIcon}
-                              alt="File"
-                              className="w-8 h-auto"
-                            />
-                            <div>
-                              <p className="font-medium text-sm">{file.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {file.size}
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            className="text-blue-500"
-                            onClick={() =>
-                              downloadFile(
-                                file.url || `${SERVER_PUBLIC}${file.name}`,
-                                file.name
-                              )
-                            }
+                      {audioFiles.map((file, index) => {
+                        const fileUrl = getFileUrl(file);
+                        return (
+                          <div
+                            key={`audio-${index}-${file.name}`}
+                            className="flex flex-col p-2 hover:bg-gray-50 rounded-lg mb-2"
                           >
-                            <img
-                              src={downloadIcon}
-                              alt="Download"
-                              className="w-4 h-4"
-                            />
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={fileIcon}
+                                  alt="Audio"
+                                  className="w-8 h-auto"
+                                />
+                                <div>
+                                  <p className="font-medium text-sm">
+                                    {file.name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {file.size}
+                                  </p>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                className="text-blue-500"
+                                onClick={() => downloadFile(fileUrl, file.name)}
+                              >
+                                <img
+                                  src={downloadIcon}
+                                  alt="Download"
+                                  className="w-4 h-4"
+                                />
+                              </Button>
+                            </div>
+
+                            <audio
+                              controls
+                              className="w-full h-8 mt-1"
+                              preload="metadata"
+                            >
+                              <source
+                                src={fileUrl}
+                                type={`audio/${
+                                  file.name.split(".").pop()?.toLowerCase() ||
+                                  "mp3"
+                                }`}
+                              />
+                              Your browser does not support the audio element.
+                            </audio>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
                   {documentFiles.length > 0 && (
                     <div>
                       <h5 className="text-sm font-medium mb-2">Documents</h5>
-                      {documentFiles.map((file, index) => (
-                        <div
-                          key={`doc-${index}-${file.name}`}
-                          className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg mb-2"
-                        >
-              <div className="flex items-center gap-2">
-                            <img
-                              src={fileIcon}
-                              alt="File"
-                              className="w-8 h-auto"
-                            />
-                <div>
-                              <p className="font-medium text-sm">{file.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {file.size}
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            className="text-blue-500"
-                            onClick={() =>
-                              downloadFile(
-                                file.url || `${SERVER_PUBLIC}${file.name}`,
-                                file.name
-                              )
-                            }
+                      {documentFiles.map((file, index) => {
+                        const fileUrl = getFileUrl(file);
+                        return (
+                          <div
+                            key={`doc-${index}-${file.name}`}
+                            className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg mb-2"
                           >
-                            <img
-                              src={downloadIcon}
-                              alt="Download"
-                              className="w-4 h-4"
-                            />
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={fileIcon}
+                                alt="File"
+                                className="w-8 h-auto"
+                              />
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {file.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {file.size}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              className="text-blue-500"
+                              onClick={() => downloadFile(fileUrl, file.name)}
+                            >
+                              <img
+                                src={downloadIcon}
+                                alt="Download"
+                                className="w-4 h-4"
+                              />
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </>
@@ -430,16 +469,13 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
     }
   };
 
-  // Fetch friends list when showing add members dialog
   useEffect(() => {
     if (showAddMembers) {
       const fetchFriends = async () => {
         try {
-          // Get the current user's friends
           const response = await getFriendsList(currentUser, 1, 100);
           console.log("Friends list response:", response);
 
-          // Check the structure of the response
           let friendsData = [];
           if (response.data && Array.isArray(response.data)) {
             friendsData = response.data;
@@ -454,7 +490,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
             friendsData = [];
           }
 
-          // Filter out users who are already members
           const existingMemberIds = members.map((member) => member._id);
           const availableFriends = friendsData.filter(
             (friend: any) => !existingMemberIds.includes(friend._id)
@@ -478,7 +513,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
     try {
       console.log("Removing member with ID:", memberId);
 
-      // If there are only 3 members (or fewer) in the group, we can't remove more
       if (members.length <= 3) {
         toast.warning("Group must have at least 3 members");
         return;
@@ -501,7 +535,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
     try {
       setIsUpdating(true);
 
-      // Use the direct API function instead of the provided updateGroupInfo prop
       const response = await updateConversation(
         chat._id,
         newGroupName,
@@ -511,7 +544,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
 
       console.log("Update response:", response);
 
-      // If we have the updateGroupInfo prop, also call that to ensure UI updates
       if (updateGroupInfo) {
         await updateGroupInfo({ groupName: newGroupName });
       }
@@ -541,16 +573,13 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
     try {
       setIsUpdating(true);
 
-      // First upload the image
       const data = new FormData();
       const fileName = Date.now() + newgroupAvatar.name;
       data.append("name", fileName);
       data.append("file", newgroupAvatar);
 
-      // Upload image through the upload API
       dispatch(uploadImage(data) as any);
 
-      // Update conversation with the new image filename
       const response = await updateConversation(
         chat._id,
         chat.groupName || "",
@@ -560,25 +589,20 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
 
       console.log("Update photo response:", response);
 
-      // Also call the provided updateGroupInfo if available
       if (updateGroupInfo) {
         await updateGroupInfo({ groupAvatar: newgroupAvatar });
       }
 
-      // Update local chat object to reflect changes immediately
       if (chat) {
         chat.groupAvatar = fileName;
       }
 
       toast.success("Group avatar updated");
 
-      // Keep the preview but clear the newgroupAvatar state
-      // This allows the UI to show the new image while preventing multiple uploads
       setNewgroupAvatar(null);
     } catch (error) {
       console.error("Error updating group photo:", error);
       toast.error("Failed to update group photo");
-      // Clear preview on error
       setNewgroupAvatar(null);
       setgroupAvatarPreview(null);
     } finally {
@@ -586,7 +610,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
     }
   };
 
-  // Clean up object URLs when component unmounts
   useEffect(() => {
     return () => {
       if (groupAvatarPreview) {
@@ -604,7 +627,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
 
       await addMembers(selectedFriends);
 
-      // Clear selection and close dialog
       setSelectedFriends([]);
       setShowAddMembers(false);
     } catch (error) {
@@ -686,7 +708,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
                 aria-label="Upload group picture"
               />
 
-              {/* Save/Cancel buttons for new photo */}
               {newgroupAvatar && (
                 <div className="mt-2 flex justify-center gap-2">
                   <button
@@ -745,7 +766,6 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
             </div>
           )}
 
-          {/* Group name with edit functionality */}
           {isGroup && isEditingName && isAdmin ? (
             <div className="w-full flex flex-col items-center mb-2">
               <div className="flex overflow-hidden items-center w-full h-10 px-3 rounded-lg border border-solid border-[#1CA7EC] shadow-sm bg-white">
@@ -987,10 +1007,9 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
                 {isUpdating ? "Adding..." : "Add Selected"}
               </Button>
             </div>
-        </div>
+          </div>
         )}
 
-        {/* Gallery section - use memoized component */}
         {gallerySection}
       </div>
     </div>

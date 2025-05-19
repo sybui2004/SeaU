@@ -126,12 +126,9 @@ export const loadMessages = async (
       };
     });
 
-    // Extract file data from messages
     const fileData: FileData[] = [];
 
-    // First get files from message fileUrl fields
     messageData.forEach((msg: any) => {
-      // Check for fileData/fileUrl directly on the message
       if (msg.fileData || msg.fileUrl) {
         const fileType =
           msg.fileType ||
@@ -151,7 +148,6 @@ export const loadMessages = async (
         });
       }
 
-      // Check for attachments
       if (msg.attachments && msg.attachments.length > 0) {
         msg.attachments.forEach((attachment: any) => {
           fileData.push({
@@ -180,9 +176,7 @@ export const processReceivedMessage = async (
   currentUserProfilePic?: string,
   userData?: any
 ): Promise<Message> => {
-  // Get proper timestamp
   const createdAt = receivedMessage.createdAt || new Date().toISOString();
-  // Format to HH:MM
   const formatTime = (timestamp: string) => {
     try {
       const date = new Date(timestamp);

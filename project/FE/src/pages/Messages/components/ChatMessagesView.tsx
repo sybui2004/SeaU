@@ -62,7 +62,6 @@ const ChatMessagesView: React.FC<ChatMessagesViewProps> = ({
             const isSentByMe = message.sender === "You";
             const prevMessage = index > 0 ? messages[index - 1] : null;
 
-            // Determine if this message should show sender info
             const showSenderInfo =
               isGroupChat &&
               !isSentByMe &&
