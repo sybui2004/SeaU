@@ -84,7 +84,7 @@ export const getAllConversationsForAdmin = (
   limit: number = 10,
   search: string = ""
 ) => {
-  let query = `/admin/conversations?page=${page}&limit=${limit}`;
+  let query = `/conversation/admin?page=${page}&limit=${limit}`;
 
   if (search) {
     query += `&search=${encodeURIComponent(search)}`;
@@ -93,10 +93,6 @@ export const getAllConversationsForAdmin = (
   console.log("Calling API with URL:", query);
   return API.get(query);
 };
-
-// Get conversation details (admin only)
-export const getConversationDetailsForAdmin = (conversationId: string) =>
-  API.get(`/conversation/admin/${conversationId}`);
 
 // Delete conversation as admin
 export const deleteConversationAsAdmin = (conversationId: string) =>

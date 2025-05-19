@@ -477,7 +477,6 @@ function Messages() {
                   <Conversation
                     data={chat}
                     currentUser={user._id}
-                    online={checkOnlineStatus(chat)}
                     onSelectChat={(chatData) => {
                       console.log(
                         "Callback onSelectChat được gọi với:",

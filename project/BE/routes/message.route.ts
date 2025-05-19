@@ -14,17 +14,9 @@ import adminMiddleware from "../middleware/admin.middleware";
 import wrap from "./wrap";
 
 const router = express.Router();
-
 // User routes
 router.get("/user/:userId", authMiddleware, wrap(getMessagesByUserId));
 router.get("/:conversationId", wrap(getMessages));
-
-// Admin routes
-router.get(
-  "/admin/:conversationId",
-  adminMiddleware,
-  wrap(getAllMessagesForAdmin)
-);
 
 router.use(authMiddleware);
 

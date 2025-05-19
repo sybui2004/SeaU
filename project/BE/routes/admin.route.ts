@@ -5,7 +5,6 @@ import adminMiddleware from "../middleware/admin.middleware";
 import wrap from "./wrap";
 import multer from "multer";
 import path from "path";
-import { getAllConversationsForAdmin } from "../controllers/conversation.controller";
 
 const router = express.Router();
 
@@ -53,6 +52,5 @@ router.delete("/users/:userId", wrap(adminController.deleteUser));
 router.get("/stats", wrap(adminController.getDashboardStats));
 
 // Conversations routes
-router.get("/conversations", wrap(getAllConversationsForAdmin));
 
 export default router;

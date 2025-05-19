@@ -68,16 +68,16 @@ export const adjustScrollAfterLoadingOlder = (
   const newHeight = container.scrollHeight;
   const heightDifference = newHeight - previousHeight;
 
-  console.log("Adjusting scroll after loading older messages:", {
-    previousHeight,
-    newHeight,
-    heightDifference,
-    previousScrollPosition,
-  });
-
   if (heightDifference > 0) {
-    container.scrollTop = heightDifference + previousScrollPosition;
+    container.scrollTop = previousScrollPosition + heightDifference;
 
-    console.log("New scroll position:", container.scrollTop);
+    setTimeout(() => {
+      if (container) {
+        console.log(
+          "New scroll position after adjustment:",
+          container.scrollTop
+        );
+      }
+    }, 10);
   }
 };

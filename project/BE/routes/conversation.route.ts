@@ -7,7 +7,6 @@ import {
   deleteConversationAsAdmin,
   findConversation,
   getConversation,
-  getConversationDetailsForAdmin,
   getConversations,
   getAllConversationsForAdmin,
   removeFromGroup,
@@ -20,17 +19,12 @@ import wrap from "./wrap";
 const router = express.Router();
 
 // Admin routes
-router.get("/admin/all", adminMiddleware, wrap(getAllConversationsForAdmin));
-router.get(
-  "/admin/:conversationId",
-  adminMiddleware,
-  wrap(getConversationDetailsForAdmin)
-);
 router.delete(
   "/admin/:conversationId",
   adminMiddleware,
   wrap(deleteConversationAsAdmin)
 );
+router.get("/admin", wrap(getAllConversationsForAdmin));
 // User routes
 router.get("/user/:userId", wrap(getConversations));
 router.get("/:conversationId", wrap(getConversation));

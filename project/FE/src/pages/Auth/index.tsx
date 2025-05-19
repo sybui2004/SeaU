@@ -7,7 +7,6 @@ import {
   ImageSlider,
   LoginForm,
   PasswordInput,
-  SocialLoginButtons,
   RegisterForm,
 } from "./components";
 import { Button } from "@/components/ui/button";
@@ -129,8 +128,6 @@ function AuthForm() {
                     >
                       Log in
                     </Button>
-                    <p className="mb-3 text-sm text-zinc-700">Or log in with</p>
-                    <SocialLoginButtons />
                   </div>
                   <div className="flex justify-center w-full max-w-[300px]">
                     <Button
@@ -222,8 +219,6 @@ function AuthForm() {
                           Sign Up
                         </span>
                       </button>
-                      <p className="text-sm">Or sign up with</p>
-                      <SocialLoginButtons />
                     </div>
                   </div>
                 </div>

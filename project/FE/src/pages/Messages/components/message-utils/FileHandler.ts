@@ -77,15 +77,17 @@ export const constructServerPath = (
   fileType: "image" | "audio" | "video" | "other",
   fileName: string
 ): string => {
+  const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
+
   switch (fileType) {
     case "image":
-      return `/images/${fileName}`;
+      return `/images/${safeFileName}`;
     case "audio":
-      return `/audio/${fileName}`;
+      return `/audio/${safeFileName}`;
     case "video":
-      return `/video/${fileName}`;
+      return `/video/${safeFileName}`;
     default:
-      return `/uploads/${fileName}`;
+      return `/uploads/${safeFileName}`;
   }
 };
 

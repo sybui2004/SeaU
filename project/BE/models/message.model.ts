@@ -24,9 +24,6 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    originalText: {
-      type: String,
-    },
     fileType: {
       type: String,
       enum: ["image", "audio", "video", "other", null],
@@ -41,12 +38,6 @@ const messageSchema = new mongoose.Schema(
     fileSize: {
       type: Number,
     },
-    isReadBy: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
   },
   { timestamps: true }
 );

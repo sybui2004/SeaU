@@ -126,20 +126,47 @@ export const loadMessages = async (
       };
     });
 
-    const fileData = messageData
-      .filter((msg: any) => msg.attachments && msg.attachments.length > 0)
-      .map((msg: any) => {
-        const attachment = msg.attachments[0];
-        return {
-          name: attachment.fileName || "File attachment",
-          size: attachment.fileSize
-            ? `${Math.round(Number(attachment.fileSize) / 1024)}KB`
-            : "~KB",
-          url: attachment.fileUrl || attachment.fileData,
-          type: attachment.type,
-        };
-      });
+    // Extract file data from messages
+    const fileData: FileData[] = [];
 
+    // First get files from message fileUrl fields
+    messageData.forEach((msg: any) => {
+      // Check for fileData/fileUrl directly on the message
+      if (msg.fileData || msg.fileUrl) {
+        const fileType =
+          msg.fileType ||
+          (msg.fileName && msg.fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+            ? "image"
+            : msg.fileName && msg.fileName.match(/\.(mp4|webm|mov|avi)$/i)
+            ? "video"
+            : msg.fileName && msg.fileName.match(/\.(mp3|wav|ogg)$/i)
+            ? "audio"
+            : "other");
+
+        fileData.push({
+          name: msg.fileName || "File",
+          size: msg.fileSize ? formatFileSize(Number(msg.fileSize)) : "Unknown",
+          url: msg.fileUrl || msg.fileData,
+          type: fileType,
+        });
+      }
+
+      // Check for attachments
+      if (msg.attachments && msg.attachments.length > 0) {
+        msg.attachments.forEach((attachment: any) => {
+          fileData.push({
+            name: attachment.fileName || "File attachment",
+            size: attachment.fileSize
+              ? `${Math.round(Number(attachment.fileSize) / 1024)}KB`
+              : "Unknown",
+            url: attachment.fileUrl || attachment.fileData,
+            type: attachment.type?.split("/")[0] || "other",
+          });
+        });
+      }
+    });
+
+    console.log("Extracted file data:", fileData);
     return { messages: formattedMessages, fileData };
   } catch (error) {
     console.error("Error loading messages:", error);
@@ -153,6 +180,26 @@ export const processReceivedMessage = async (
   currentUserProfilePic?: string,
   userData?: any
 ): Promise<Message> => {
+  // Get proper timestamp
+  const createdAt = receivedMessage.createdAt || new Date().toISOString();
+  // Format to HH:MM
+  const formatTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      return new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+  };
+
+  const timeDisplay = formatTime(createdAt);
+
   if (receivedMessage.senderId === currentUser) {
     return {
       id: receivedMessage._id || Date.now().toString(),
@@ -161,10 +208,10 @@ export const processReceivedMessage = async (
         typeof receivedMessage.text === "object"
           ? receivedMessage.text.text || "New message"
           : receivedMessage.text || "New message",
-      timestamp: timeagoFormat(receivedMessage.createdAt || new Date()),
+      timestamp: timeDisplay,
       senderId: receivedMessage.senderId,
       chatId: receivedMessage.chatId,
-      createdAt: receivedMessage.createdAt || new Date().toISOString(),
+      createdAt: createdAt,
       senderProfilePic: currentUserProfilePic,
       isImage:
         receivedMessage.fileType === "image" ||
@@ -231,10 +278,10 @@ export const processReceivedMessage = async (
         typeof receivedMessage.text === "object"
           ? receivedMessage.text.text || "New message"
           : receivedMessage.text || "New message",
-      timestamp: timeagoFormat(receivedMessage.createdAt || new Date()),
+      timestamp: timeDisplay,
       senderId: receivedMessage.senderId,
       chatId: receivedMessage.chatId,
-      createdAt: receivedMessage.createdAt || new Date().toISOString(),
+      createdAt: createdAt,
       senderProfilePic: data.profilePic,
       isImage:
         receivedMessage.fileType === "image" ||
@@ -299,10 +346,10 @@ export const processReceivedMessage = async (
         typeof receivedMessage.text === "object"
           ? receivedMessage.text.text || "New message"
           : receivedMessage.text || "New message",
-      timestamp: timeagoFormat(receivedMessage.createdAt || new Date()),
+      timestamp: timeDisplay,
       senderId: receivedMessage.senderId,
       chatId: receivedMessage.chatId,
-      createdAt: receivedMessage.createdAt || new Date().toISOString(),
+      createdAt: createdAt,
       senderProfilePic: userData?.profilePic,
       isImage: receivedMessage.fileType === "image" || false,
       isAudio: receivedMessage.fileType === "audio" || false,

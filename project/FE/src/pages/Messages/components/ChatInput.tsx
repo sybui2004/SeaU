@@ -38,6 +38,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const [recordingProgress, setRecordingProgress] = useState<number>(0);
+  const [voiceReady, setVoiceReady] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -136,7 +137,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const toggleRecording = () => {
     if (isRecording) {
       stopRecording();
+      setVoiceReady(true);
+      setTimeout(() => {
+        handleSend();
+      }, 500);
     } else {
+      setVoiceReady(false);
       startRecording();
     }
   };
@@ -145,6 +151,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     handleSend();
     setFile(null);
     setShowEmoji(false);
+    setVoiceReady(false);
   };
 
   useEffect(() => {
@@ -180,6 +187,49 @@ const ChatInput: React.FC<ChatInputProps> = ({
           <Progress value={recordingProgress} className="h-1 bg-gray-200" />
         </div>
       )}
+
+      {!isRecording && voiceReady && (
+        <div className="mb-2 p-2 bg-blue-50 rounded-lg flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="text-blue-500 mr-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </span>
+            <span className="text-sm font-medium">
+              Voice message ready to send
+            </span>
+          </div>
+          <button
+            className="text-red-500 hover:text-red-700 text-sm p-1 h-6 w-6 flex items-center justify-center rounded-full hover:bg-red-50"
+            onClick={() => {
+              // Clear the voice recording data
+              setVoiceReady(false);
+              audioChunksRef.current = [];
+
+              // Release file URL if exists
+              if (file) {
+                setFile(null);
+              }
+
+              console.log("Voice message cancelled");
+            }}
+            title="Cancel voice message"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center">
         <div className="relative mr-3">
           <button
@@ -228,7 +278,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             type="button"
             className={`text-xl transition-colors p-2 rounded-full ${
               isRecording
-                ? "text-red-500 bg-red-100"
+                ? "text-red-500 bg-red-100 animate-pulse shadow-md"
                 : "text-gray-500 hover:text-blue-500"
             }`}
             onClick={toggleRecording}

@@ -1,15 +1,17 @@
 import { FC, useState, useEffect } from "react";
 import { getAllConversationsForAdmin } from "@/api/ConversationRequest";
 import {
-  getAllMessagesForAdmin,
   deleteMessage,
   updateMessageAsAdmin,
+  getMessages,
 } from "@/api/MessageRequest";
 import defaultAvatar from "@/assets/images/ava.png";
 import searchIcon from "@assets/images/icon-search.png";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Loader2, X, ArrowLeft, Send } from "lucide-react";
+import { useSelector } from "react-redux";
+import { toast } from "react-toastify";
 
 interface Conversation {
   _id: string;
@@ -18,7 +20,22 @@ interface Conversation {
   updatedAt: string;
   isGroup: boolean;
   name?: string;
-  lastMessage?: string;
+  lastMessage?:
+    | string
+    | {
+        _id: string;
+        text: string;
+        senderId: string;
+        conversationId: string;
+        createdAt: string;
+        updatedAt: string;
+        isDeleted: boolean;
+        isEdited: boolean;
+        fileType?: string;
+        fileName?: string;
+        fileSize?: number;
+        fileData?: string;
+      };
   memberDetails?: {
     _id: string;
     fullname: string;
@@ -91,11 +108,27 @@ const ConversationList: FC = () => {
   const serverPublic =
     import.meta.env.VITE_PUBLIC_FOLDER || "http://localhost:3000";
 
+  const { user } = useSelector((state: any) => state.authReducer.authData);
+
+  const checkAdminPermission = () => {
+    if (!user || !user.isAdmin) {
+      toast.error("Bạn không có quyền truy cập trang này");
+      return false;
+    }
+    return true;
+  };
+
   useEffect(() => {
+    if (!checkAdminPermission()) {
+      setError("Bạn không có quyền truy cập trang này");
+      return;
+    }
     fetchConversations();
   }, [page]);
 
   useEffect(() => {
+    if (!checkAdminPermission()) return;
+
     const timer = setTimeout(() => {
       fetchConversations();
     }, 500);
@@ -104,6 +137,11 @@ const ConversationList: FC = () => {
   }, [searchQuery]);
 
   const fetchConversations = async () => {
+    if (!checkAdminPermission()) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await getAllConversationsForAdmin(page, 10, searchQuery);
@@ -122,9 +160,16 @@ const ConversationList: FC = () => {
         );
       }
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching conversations:", err);
-      setError("Failed to load conversations. Please try again later.");
+      if (err.response?.status === 403) {
+        setError("Bạn không có quyền truy cập dữ liệu này");
+        toast.error("Bạn không có quyền truy cập dữ liệu này");
+      } else {
+        setError(
+          "Không thể tải danh sách cuộc trò chuyện. Vui lòng thử lại sau."
+        );
+      }
       setConversations([]);
     } finally {
       setLoading(false);
@@ -132,16 +177,78 @@ const ConversationList: FC = () => {
   };
 
   const fetchMessagesForConversation = async (conversationId: string) => {
+    if (!checkAdminPermission()) {
+      toast.error("Bạn không có quyền xem tin nhắn");
+      return;
+    }
+
     try {
       setLoadingMessages(true);
-      const response = await getAllMessagesForAdmin(
-        conversationId,
-        messagePage,
-        10
-      );
+      console.log("Fetching messages for conversation:", conversationId);
+
+      const response = await getMessages(conversationId, messagePage, 10);
+
+      console.log("Messages API response:", response);
 
       if (response.data) {
-        setMessages(response.data.messages || []);
+        const messagesData = response.data.messages || [];
+        console.log("Messages data:", messagesData);
+
+        if (!Array.isArray(messagesData)) {
+          console.error("Messages data is not an array:", messagesData);
+          toast.error("Định dạng dữ liệu không hợp lệ");
+          setMessages([]);
+          return;
+        }
+
+        const formattedMessages = messagesData
+          .filter((msg: any) => msg !== null && msg !== undefined)
+          .map((msg: any) => {
+            // Kiểm tra senderId
+            let senderInfo = {
+              _id: "unknown",
+              fullname: "Unknown User",
+              profilePic: undefined,
+            };
+
+            if (msg.senderId) {
+              if (typeof msg.senderId === "object") {
+                senderInfo = {
+                  _id: msg.senderId._id || "unknown",
+                  fullname: msg.senderId.fullname || "Unknown User",
+                  profilePic: msg.senderId.profilePic,
+                };
+              } else {
+                senderInfo = {
+                  _id: msg.senderId,
+                  fullname: "User",
+                  profilePic: undefined,
+                };
+              }
+            }
+
+            return {
+              _id: msg._id || `temp-${Date.now()}`,
+              conversationId: msg.conversationId || {
+                _id: conversationId,
+                isGroup: false,
+              },
+              senderId: senderInfo,
+              text:
+                typeof msg.text === "object"
+                  ? msg.text.text || "A file"
+                  : msg.text || "A file",
+              attachments: Array.isArray(msg.attachments)
+                ? msg.attachments
+                : [],
+              createdAt: msg.createdAt || new Date().toISOString(),
+              updatedAt: msg.updatedAt || new Date().toISOString(),
+              isEdited: Boolean(msg.isEdited),
+              isDeleted: Boolean(msg.isDeleted),
+            } as MessageWithPopulated;
+          });
+
+        setMessages(formattedMessages);
         setMessagePagination(
           response.data.pagination || {
             currentPage: messagePage,
@@ -151,9 +258,22 @@ const ConversationList: FC = () => {
             hasPrevPage: false,
           }
         );
+      } else {
+        console.error("No data in API response");
+        setMessages([]);
+        toast.error("Không thể tải tin nhắn");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching messages:", err);
+
+      if (err.response?.status === 403) {
+        toast.error("Bạn không có quyền xem tin nhắn này");
+      } else if (err.response?.status === 404) {
+        toast.error("Không tìm thấy cuộc trò chuyện");
+      } else {
+        toast.error("Lỗi khi tải tin nhắn");
+      }
+
       setMessages([]);
     } finally {
       setLoadingMessages(false);
@@ -161,9 +281,20 @@ const ConversationList: FC = () => {
   };
 
   const handleConversationClick = (conversation: Conversation) => {
-    setSelectedConversation(conversation);
-    setMessagePage(1);
-    fetchMessagesForConversation(conversation._id);
+    if (!checkAdminPermission()) {
+      toast.error("Bạn không có quyền xem tin nhắn");
+      return;
+    }
+
+    try {
+      console.log("Conversation clicked:", conversation);
+      setSelectedConversation(conversation);
+      setMessagePage(1);
+      fetchMessagesForConversation(conversation._id);
+    } catch (error) {
+      console.error("Error handling conversation click:", error);
+      toast.error("Có lỗi xảy ra khi tải tin nhắn");
+    }
   };
 
   const handleBackToList = () => {
@@ -416,7 +547,10 @@ const ConversationList: FC = () => {
                     </div>
                     {conversation.lastMessage && (
                       <p className="mt-2 text-sm text-gray-600 line-clamp-1">
-                        {conversation.lastMessage}
+                        {typeof conversation.lastMessage === "object"
+                          ? conversation.lastMessage.text ||
+                            "No message content"
+                          : conversation.lastMessage}
                       </p>
                     )}
                   </div>

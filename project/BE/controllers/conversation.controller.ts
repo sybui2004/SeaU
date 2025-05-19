@@ -47,7 +47,20 @@ export const getAllConversationsForAdmin = async (
             conversationObj.lastMessage._id
           );
           if (lastMessage) {
-            (conversationObj as any).lastMessage = lastMessage.text;
+            (conversationObj as any).lastMessage = {
+              _id: lastMessage._id,
+              text: lastMessage.text,
+              senderId: lastMessage.senderId,
+              conversationId: lastMessage.conversationId,
+              createdAt: lastMessage.createdAt,
+              updatedAt: lastMessage.updatedAt,
+              isDeleted: lastMessage.isDeleted,
+              isEdited: lastMessage.isEdited,
+              fileType: lastMessage.fileType,
+              fileName: lastMessage.fileName,
+              fileSize: lastMessage.fileSize,
+              fileData: lastMessage.fileData,
+            };
           }
         }
 
@@ -68,53 +81,6 @@ export const getAllConversationsForAdmin = async (
   } catch (error) {
     console.error("Error retrieving all conversations for admin:", error);
     return responseUtils.error(res, "Error retrieving conversations", 500);
-  }
-};
-
-// Get conversation details for admin
-export const getConversationDetailsForAdmin = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const conversationId = req.params.conversationId;
-
-    const conversation = await Conversation.findById(conversationId)
-      .populate("members", "fullname profilePic email username")
-      .populate("groupAdmin", "fullname profilePic")
-      .populate({
-        path: "lastMessage",
-        populate: {
-          path: "senderId",
-          select: "fullname profilePic",
-        },
-      });
-
-    if (!conversation) {
-      return responseUtils.error(res, "Conversation not found", 404);
-    }
-
-    const messageCount = await Message.countDocuments({ conversationId });
-
-    const recentMessages = await Message.find({ conversationId })
-      .populate("senderId", "fullname profilePic")
-      .sort({ createdAt: -1 })
-      .limit(5);
-
-    const conversationDetails = {
-      ...conversation.toObject(),
-      messageCount,
-      recentMessages,
-    };
-
-    return responseUtils.success(res, { conversation: conversationDetails });
-  } catch (error) {
-    console.error("Error retrieving conversation details for admin:", error);
-    return responseUtils.error(
-      res,
-      "Error retrieving conversation details",
-      500
-    );
   }
 };
 
@@ -157,8 +123,22 @@ export const getConversations = async (req: Request, res: Response) => {
           const lastMessage = await Message.findById(
             conversationObj.lastMessage._id
           );
+
           if (lastMessage) {
-            (conversationObj as any).lastMessage = lastMessage.text;
+            (conversationObj as any).lastMessage = {
+              _id: lastMessage._id,
+              text: lastMessage.text,
+              senderId: lastMessage.senderId,
+              conversationId: lastMessage.conversationId,
+              createdAt: lastMessage.createdAt,
+              updatedAt: lastMessage.updatedAt,
+              isDeleted: lastMessage.isDeleted,
+              isEdited: lastMessage.isEdited,
+              fileType: lastMessage.fileType,
+              fileName: lastMessage.fileName,
+              fileSize: lastMessage.fileSize,
+              fileData: lastMessage.fileData,
+            };
           }
         }
 

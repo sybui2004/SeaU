@@ -15,14 +15,38 @@ export const formatMessagesFromAPI = (
     const senderName =
       senderId === currentUser ? "You" : senderData?.fullname || "User";
 
+    // Format timestamp to HH:MM and store original date
+    let formattedTime;
+    let originalDate;
+    try {
+      originalDate = new Date(msg.createdAt);
+      // Store formatted time
+      formattedTime = originalDate.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+      console.log(
+        `Message ID ${msg._id}: Original date: ${originalDate}, formatted time: ${formattedTime}`
+      );
+    } catch (error) {
+      console.error(`Error formatting time for message ${msg._id}:`, error);
+      originalDate = new Date();
+      formattedTime = originalDate.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+    }
+
     return {
       id: msg._id,
       sender: senderName,
       content: msg.text,
-      timestamp: timeagoFormat(msg.createdAt),
+      timestamp: formattedTime, // Formatted time display (HH:MM)
       senderId: senderId,
       chatId: msg.conversationId,
-      createdAt: msg.createdAt,
+      createdAt: msg.createdAt || originalDate.toISOString(), // Original date string
       attachments: msg.attachments || [],
       senderProfilePic: senderData?.profilePic,
       isImage:
@@ -87,11 +111,21 @@ export const createTempMessage = (
 ): Message => {
   const now = new Date();
 
+  const timeDisplay = now.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  console.log(
+    `Creating temp message with time: ${timeDisplay} and ISO: ${now.toISOString()}`
+  );
+
   let newMsg: Message = {
     id: Date.now().toString(),
     sender: "You",
     content: message,
-    timestamp: timeagoFormat(now),
+    timestamp: timeDisplay,
     senderId: currentUser,
     chatId: chatId,
     createdAt: now.toISOString(),

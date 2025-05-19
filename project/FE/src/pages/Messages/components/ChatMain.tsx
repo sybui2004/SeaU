@@ -7,11 +7,11 @@ import ChatDetail from "./ChatDetail";
 import ChatMessagesView from "./ChatMessagesView";
 
 import {
-  getServerPublicPath,
   Message,
   Member,
   FileData,
   ChatMainProps,
+  formatFileSize,
 } from "./message-utils/MessageTypes";
 import {
   loadMessages,
@@ -32,15 +32,16 @@ import {
   scrollToBottom,
   saveScrollPosition,
   restoreScrollPosition,
-  adjustScrollAfterLoadingOlder,
 } from "./message-utils/ScrollManager";
 
 import { getUser } from "@/api/UserRequest";
-import { getConversation } from "@/api/ConversationRequest";
+import {
+  getConversation,
+  addToGroup,
+  removeFromGroup,
+  updateConversation,
+} from "@/api/ConversationRequest";
 import { addMessage } from "@/api/MessageRequest";
-
-const SERVER_PUBLIC = getServerPublicPath();
-
 const ChatMain: React.FC<ChatMainProps> = ({
   chat,
   currentUser,
@@ -285,6 +286,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
     console.log("Loading messages for chat ID:", chat._id);
     setIsLoading(true);
+    setFiles([]); // Clear files when loading a new chat
 
     const fetchMessages = async () => {
       try {
@@ -293,8 +295,33 @@ const ChatMain: React.FC<ChatMainProps> = ({
           currentUser,
           currentUserProfilePic
         );
+        console.log("Loaded messages:", result.messages.length);
+        console.log("Files loaded:", result.fileData);
+
+        // Update states in a batch with stable references
         setMessages(result.messages);
-        setFiles(result.fileData);
+
+        // Process files to ensure uniqueness
+        if (result.fileData && result.fileData.length > 0) {
+          // Use a Map to ensure uniqueness by URL or name
+          const uniqueFiles = new Map();
+
+          result.fileData.forEach((file) => {
+            const key = file.url || file.name;
+            if (key && !uniqueFiles.has(key)) {
+              uniqueFiles.set(key, {
+                ...file,
+                // Ensure all files have proper type and size
+                type: file.type || "other",
+                size: file.size || "Unknown",
+              });
+            }
+          });
+
+          // Convert Map back to array
+          setFiles(Array.from(uniqueFiles.values()));
+        }
+
         setMessagesLoaded(true);
       } catch (error) {
         console.error("Error loading messages:", error);
@@ -308,29 +335,59 @@ const ChatMain: React.FC<ChatMainProps> = ({
   }, [chat?._id, currentUser, currentUserProfilePic]);
 
   useEffect(() => {
-    if (receivedMessage && receivedMessage.chatId === chat?._id) {
-      console.log("Received new message from socket:", receivedMessage);
-      console.log(
-        "Message details from socket:",
-        JSON.stringify(receivedMessage, null, 2)
-      );
+    if (!receivedMessage || receivedMessage.chatId !== chat?._id) return;
 
-      const processMessage = async () => {
-        try {
-          const newMsg = await processReceivedMessage(
-            receivedMessage,
-            currentUser,
-            currentUserProfilePic,
-            userData
-          );
-          setMessages((prev) => [...prev, newMsg]);
-        } catch (error) {
-          console.error("Error processing received message:", error);
+    console.log("Received new message:", receivedMessage);
+
+    const processMessage = async () => {
+      try {
+        const newMsg = await processReceivedMessage(
+          receivedMessage,
+          currentUser,
+          currentUserProfilePic,
+          userData
+        );
+
+        // Add message to state
+        setMessages((prev) => [...prev, newMsg]);
+
+        // Add file to gallery if the message contains a file
+        if (newMsg.fileData || newMsg.fileUrl) {
+          const fileType =
+            newMsg.fileType ||
+            (newMsg.fileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+              ? "image"
+              : newMsg.fileName?.match(/\.(mp4|webm|mov|avi)$/i)
+              ? "video"
+              : newMsg.fileName?.match(/\.(mp3|wav|ogg)$/i)
+              ? "audio"
+              : "other");
+
+          const newFile: FileData = {
+            name: newMsg.fileName || "File",
+            size: newMsg.fileSize || "0KB",
+            url: newMsg.fileUrl,
+            type: fileType,
+          };
+
+          // Ensure we don't add the file if it already exists with same URL or name
+          setFiles((prev) => {
+            const fileExists = prev.some(
+              (file) =>
+                (file.url && file.url === newFile.url) ||
+                (file.name && file.name === newFile.name)
+            );
+
+            if (fileExists) return prev;
+            return [...prev, newFile];
+          });
         }
-      };
+      } catch (error) {
+        console.error("Error processing received message:", error);
+      }
+    };
 
-      processMessage();
-    }
+    processMessage();
   }, [
     receivedMessage,
     chat?._id,
@@ -387,19 +444,11 @@ const ChatMain: React.FC<ChatMainProps> = ({
 
     try {
       setIsLoadingMore(true);
-      setPrevScrollHeight(chatContainerRef.current.scrollHeight);
-      const currentScrollPosition = chatContainerRef.current.scrollTop || 0;
+      const container = chatContainerRef.current;
+      const currentScrollPosition = container.scrollTop || 0;
+      const currentScrollHeight = container.scrollHeight;
 
-      console.log(
-        "Loading more messages for chat ID:",
-        chat._id,
-        "page:",
-        page + 1
-      );
-      console.log("Current scroll position:", {
-        scrollTop: currentScrollPosition,
-        scrollHeight: prevScrollHeight,
-      });
+      setPrevScrollHeight(currentScrollHeight);
 
       const result = await loadMessages(
         chat._id,
@@ -419,11 +468,14 @@ const ChatMain: React.FC<ChatMainProps> = ({
       console.log("Added", result.messages.length, "old messages to the list");
       setPage((prev) => prev + 1);
 
-      adjustScrollAfterLoadingOlder(
-        chatContainerRef.current,
-        prevScrollHeight,
-        currentScrollPosition
-      );
+      setTimeout(() => {
+        if (container) {
+          const newScrollHeight = container.scrollHeight;
+          const heightDifference = newScrollHeight - currentScrollHeight;
+
+          container.scrollTop = currentScrollPosition + heightDifference;
+        }
+      }, 50);
     } catch (error) {
       console.error("Error loading more messages:", error);
     } finally {
@@ -437,11 +489,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
       return;
     }
 
-    console.log("Sending message:", message);
-    console.log("Chat ID:", chat._id);
-    console.log("File type:", fileType);
-    console.log("Selected file:", selectedFile);
-
+    // Create temporary message to show immediately in chat
     const newMsg = createTempMessage(
       message,
       currentUser,
@@ -450,21 +498,63 @@ const ChatMain: React.FC<ChatMainProps> = ({
       { selectedFile, fileUrl, fileType }
     );
 
+    // Show message in UI immediately
     setMessages((prevMessages) => [...prevMessages, newMsg]);
 
     try {
-      let filePath = null;
+      let filePath: string | null = null;
 
+      // Handle file upload if present
       if (selectedFile) {
         try {
           console.log("Uploading file with type:", fileType);
 
+          // Create a local URL for the file
+          const localFileUrl = fileUrl || URL.createObjectURL(selectedFile);
+
+          // Add file immediately to UI to prevent flickering
+          const tempFile: FileData = {
+            name: selectedFile.name,
+            size: formatFileSize(selectedFile.size),
+            url: localFileUrl, // This is a string, not null
+            type: fileType || "other",
+          };
+
+          // Add file to gallery (if not already present)
+          setFiles((prev) => {
+            const fileExists = prev.some(
+              (file) =>
+                (file.url && file.url === tempFile.url) ||
+                (file.name && file.name === tempFile.name)
+            );
+
+            if (fileExists) return prev;
+            return [...prev, tempFile];
+          });
+
+          // Actually upload the file
           filePath = await uploadFileToServer(
             selectedFile,
             fileType || "other"
           );
 
           console.log("File uploaded successfully:", filePath);
+
+          // Update file URL with server path
+          if (filePath) {
+            setFiles((prev) => {
+              return prev.map((file) => {
+                if (file.name === selectedFile.name) {
+                  const updatedFile: FileData = {
+                    ...file,
+                    url: filePath as string, // Using type assertion
+                  };
+                  return updatedFile;
+                }
+                return file;
+              });
+            });
+          }
         } catch (error) {
           console.error("Error processing file:", error);
           toast.error("Cannot upload file. Please try again later.");
@@ -564,6 +654,236 @@ const ChatMain: React.FC<ChatMainProps> = ({
     };
   }, [fileUrl]);
 
+  // Function to add members to the group
+  const handleAddMembers = async (memberIds: string[]) => {
+    if (!chat?._id || !conversationDetail?.groupAdmin) {
+      console.error("Missing chat ID or group admin");
+      return;
+    }
+
+    try {
+      console.log("Adding members to group:", memberIds);
+
+      // Process each member one by one to handle errors better
+      const addPromises = memberIds.map(async (memberId) => {
+        try {
+          const response = await addToGroup(chat._id, memberId, currentUser);
+          console.log(`Added member ${memberId} response:`, response);
+          return { success: true, memberId, userData: response.data };
+        } catch (error) {
+          console.error(`Failed to add member ${memberId}:`, error);
+          return { success: false, memberId, error };
+        }
+      });
+
+      const results = await Promise.all(addPromises);
+      const successCount = results.filter((r) => r.success).length;
+
+      if (successCount > 0) {
+        // Refresh conversation details to get updated members
+        const { data } = await getConversation(chat._id);
+        const conversationData = data.conversation || data;
+        setConversationDetail(conversationData);
+
+        // Update members list with new data
+        if (conversationData.isGroupChat) {
+          console.log("Refreshing group members after adding new members");
+
+          const groupMembers: Member[] = [];
+
+          groupMembers.push({
+            name: "You",
+            isAdmin: currentUser === conversationData.groupAdmin,
+            proPic: currentUserProfilePic,
+          });
+
+          if (Array.isArray(conversationData.members)) {
+            const memberPromises = conversationData.members
+              .filter((member: any) => {
+                if (typeof member === "object" && member._id) {
+                  return member._id !== currentUser;
+                }
+                return member !== currentUser;
+              })
+              .map(async (member: any) => {
+                const memberId =
+                  typeof member === "object" ? member._id : member;
+                if (!memberId) return null;
+
+                try {
+                  const { data } = await getUser(memberId);
+                  return {
+                    name: data.fullname || data.username || "Group member",
+                    isAdmin: memberId === conversationData.groupAdmin,
+                    proPic: data.profilePic || undefined,
+                    _id: memberId,
+                  };
+                } catch (error) {
+                  console.error(
+                    `Error fetching member ${memberId} info:`,
+                    error
+                  );
+                  return {
+                    name: "Group member",
+                    isAdmin: memberId === conversationData.groupAdmin,
+                    proPic: undefined,
+                    _id: memberId,
+                  };
+                }
+              });
+
+            const memberDetails = await Promise.all(memberPromises);
+            const validMembers = memberDetails.filter((m) => m !== null);
+            setMembers([...groupMembers, ...validMembers]);
+          }
+        }
+
+        toast.success(`Added ${successCount} members to the group`);
+      } else {
+        toast.error("Failed to add members to the group");
+      }
+    } catch (error) {
+      console.error("Error adding members:", error);
+      toast.error("Failed to add members to the group");
+      throw error;
+    }
+  };
+
+  // Function to remove a member from the group
+  const handleRemoveMember = async (memberId: string) => {
+    if (!chat?._id || !conversationDetail?.groupAdmin) {
+      console.error("Missing chat ID or group admin");
+      return;
+    }
+
+    try {
+      console.log("Removing member from group:", memberId);
+
+      // Check if removing this member would leave fewer than 3 people in the group
+      if (
+        Array.isArray(conversationDetail.members) &&
+        conversationDetail.members.length <= 3
+      ) {
+        console.log("Cannot remove member: group must have at least 3 members");
+        toast.error("Group must have at least 3 members");
+        return;
+      }
+
+      const response = await removeFromGroup(chat._id, memberId, currentUser);
+
+      console.log("Remove member response:", response);
+
+      // Refresh conversation details to get updated members
+      const { data } = await getConversation(chat._id);
+      const conversationData = data.conversation || data;
+      setConversationDetail(conversationData);
+
+      // Update members list with new data
+      if (conversationData.isGroupChat) {
+        console.log("Refreshing group members after removing a member");
+
+        const groupMembers: Member[] = [];
+
+        groupMembers.push({
+          name: "You",
+          isAdmin: currentUser === conversationData.groupAdmin,
+          proPic: currentUserProfilePic,
+        });
+
+        if (Array.isArray(conversationData.members)) {
+          const memberPromises = conversationData.members
+            .filter((member: any) => {
+              if (typeof member === "object" && member._id) {
+                return member._id !== currentUser;
+              }
+              return member !== currentUser;
+            })
+            .map(async (member: any) => {
+              const memberId = typeof member === "object" ? member._id : member;
+              if (!memberId) return null;
+
+              try {
+                const { data } = await getUser(memberId);
+                return {
+                  name: data.fullname || data.username || "Group member",
+                  isAdmin: memberId === conversationData.groupAdmin,
+                  proPic: data.profilePic || undefined,
+                  _id: memberId,
+                };
+              } catch (error) {
+                console.error(`Error fetching member ${memberId} info:`, error);
+                return {
+                  name: "Group member",
+                  isAdmin: memberId === conversationData.groupAdmin,
+                  proPic: undefined,
+                  _id: memberId,
+                };
+              }
+            });
+
+          const memberDetails = await Promise.all(memberPromises);
+          const validMembers = memberDetails.filter((m) => m !== null);
+          setMembers([...groupMembers, ...validMembers]);
+        }
+      }
+
+      toast.success("Member removed from group");
+    } catch (error) {
+      console.error("Error removing member:", error);
+      toast.error("Failed to remove member from group");
+      throw error;
+    }
+  };
+
+  // Function to update group info (name or avatar)
+  const handleUpdateGroupInfo = async (data: {
+    groupName?: string;
+    groupAvatar?: File;
+  }) => {
+    if (!chat?._id) {
+      console.error("Missing chat ID");
+      return;
+    }
+
+    try {
+      console.log("Updating group info:", data);
+
+      let fileName = "";
+
+      // If there's a new avatar, upload it first
+      if (data.groupAvatar) {
+        const formData = new FormData();
+        fileName = Date.now() + data.groupAvatar.name;
+        formData.append("name", fileName);
+        formData.append("file", data.groupAvatar);
+
+        // Upload the image
+        await uploadFileToServer(data.groupAvatar, "image");
+      }
+
+      // Update the conversation with new info
+      const response = await updateConversation(
+        chat._id,
+        data.groupName || chat.groupName || "",
+        fileName || chat.groupAvatar || "",
+        currentUser
+      );
+
+      console.log("Update group info response:", response);
+
+      // Refresh conversation details
+      const { data: refreshData } = await getConversation(chat._id);
+      const conversationData = refreshData.conversation || refreshData;
+      setConversationDetail(conversationData);
+
+      toast.success("Group information updated");
+    } catch (error) {
+      console.error("Error updating group info:", error);
+      toast.error("Failed to update group information");
+      throw error;
+    }
+  };
+
   return (
     <div className="flex h-full w-full">
       <div
@@ -571,7 +891,7 @@ const ChatMain: React.FC<ChatMainProps> = ({
           isChatDetailVisible ? "w-[70%]" : "w-full"
         } h-full flex flex-col`}
       >
-        <ChatHeader
+          <ChatHeader
           chatName={
             chat?.isGroupChat
               ? chat?.chatName || chat?.groupName || "Group chat"
@@ -584,10 +904,10 @@ const ChatMain: React.FC<ChatMainProps> = ({
               : userData?.profilePic || undefined
           }
           members={members}
-          toggleChatDetail={() => setIsChatDetailVisible((prev) => !prev)}
-        />
+            toggleChatDetail={() => setIsChatDetailVisible((prev) => !prev)}
+          />
 
-        {/* Chat messages */}
+          {/* Chat messages */}
         <ChatMessagesView
           messages={messages}
           isLoading={isLoading}
@@ -614,17 +934,20 @@ const ChatMain: React.FC<ChatMainProps> = ({
       {/* Chat Detail */}
       {isChatDetailVisible && (
         <div className="w-[30%] h-full">
-          <ChatDetail
+        <ChatDetail
             isOpen={isChatDetailVisible}
             onClose={() => setIsChatDetailVisible(false)}
             chat={chat || conversationDetail}
-            members={members}
+          members={members}
             currentUser={currentUser}
             groupAdmin={conversationDetail?.groupAdmin}
-            files={files}
-            selectedTab={selectedTab}
-            setSelectedTab={setSelectedTab}
-          />
+          files={files}
+          selectedTab={selectedTab}
+          setSelectedTab={setSelectedTab}
+            addMembers={handleAddMembers}
+            removeMember={handleRemoveMember}
+            updateGroupInfo={handleUpdateGroupInfo}
+        />
         </div>
       )}
     </div>
